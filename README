@@ -1,0 +1,16 @@
+cxxpool is a thread pool for C++
+
+
+Install
+-------
+
+./configure
+make install
+
+OR
+
+Copy src/cxxpool.h to your project.
+
+
+cxxpool is being developed by Christian Blume. Contact Christian at
+chr.blume@gmail.com for any questions or comments.
