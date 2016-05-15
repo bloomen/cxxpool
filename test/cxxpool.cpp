@@ -32,7 +32,7 @@ TEST(test_add_two_tasks) {
 }
 
 TEST(test_add_various_tasks_with_priorities) {
-  cxxpool::thread_pool pool;
+  cxxpool::thread_pool pool{3};
   auto future1 = pool.push([]{ return 1; });
   auto future2 = pool.push(1, [](double value) { return value; }, 2.);
   auto future3 = pool.push(2, [](double a, int b) { return a * b; }, 3, 2.);

@@ -28,7 +28,6 @@ class thread_pool {
   {
     if (max_n_threads_ <= 0)
       max_n_threads_ = hardware_concurrency();
-    start_threads();
   }
 
   thread_pool()
@@ -66,6 +65,10 @@ class thread_pool {
     {
         std::lock_guard<std::mutex> lock{mutex_};
         tasks_.emplace([pack_task]{ (*pack_task)(); }, priority);
+        if (threads_.size() < static_cast<unsigned>(max_n_threads_) &&
+            tasks_.size() > threads_.size()) {
+          threads_.emplace_back(&thread_pool::run, this);
+        }
     }
     cond_var_.notify_one();
     return future;
@@ -78,12 +81,6 @@ class thread_pool {
   }
 
  private:
-
-  void start_threads() {
-    threads_ = std::list<std::thread>(max_n_threads_);
-    for (auto& thread : threads_)
-      thread = std::thread{&thread_pool::run, this};
-  }
 
   void run() {
     for (;;) {
