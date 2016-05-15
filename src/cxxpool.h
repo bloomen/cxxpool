@@ -145,7 +145,7 @@ class thread_pool {
   std::list<std::thread> threads_;
   bool done_;
   int max_n_threads_;
-  std::priority_queue<priority_task, std::deque<priority_task>> tasks_;
+  std::priority_queue<priority_task> tasks_;
   std::condition_variable cond_var_;
   std::mutex mutex_;
 };
