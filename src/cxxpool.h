@@ -5,6 +5,8 @@
 #include <queue>
 #include <utility>
 #include <list>
+#include <functional>
+#include <memory>
 
 
 namespace cxxpool {
@@ -15,24 +17,33 @@ class thread_pool_error : public std::runtime_error {
 };
 
 
-template<typename ResultType>
 class thread_pool {
  public:
 
   explicit thread_pool(int max_n_threads)
-  : threads_{}, done_{false}, max_n_threads_{max_n_threads}, tasks_{}
+  : threads_{}, done_{false}, max_n_threads_{max_n_threads}, tasks_{},
+    cond_var_{}, mutex_{}
   {
-    if (max_n_threads_ <= 0) {
+    if (max_n_threads_ <= 0)
       max_n_threads_ = hardware_concurrency();
-    }
+    start_threads();
   }
 
   thread_pool()
   : thread_pool{0}
   {}
 
+  thread_pool(const thread_pool&) = delete;
+  thread_pool& operator=(const thread_pool&) = delete;
+  thread_pool(thread_pool&&) = delete;
+  thread_pool& operator=(thread_pool&&) = delete;
+
   ~thread_pool() {
-    done_ = true;
+    {
+      std::lock_guard<std::mutex> lock{mutex_};
+      done_ = true;
+    }
+    cond_var_.notify_all();
     for (auto& thread : threads_)
       thread.join();
   }
@@ -41,26 +52,41 @@ class thread_pool {
     return max_n_threads_;
   }
 
-  template<typename Functor>
-  std::future<ResultType> push(Functor&& functor) {
-    std::packaged_task<ResultType()> task{std::forward<Functor>(functor)};
-    auto future = task.get_future();
-    task();  // TODO(cblume): fix this
-    tasks_.push(std::move(task));
+  template<typename Functor, typename... Args>
+  auto push(Functor&& functor, Args&&... args)
+    -> std::future<typename std::result_of<Functor(Args...)>::type> {
+    using result_type = typename std::result_of<Functor(Args...)>::type;
+    auto pack_task = std::make_shared<std::packaged_task<result_type()>>(
+      std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
+    auto future = pack_task->get_future();
+    {
+        std::lock_guard<std::mutex> lock{mutex_};
+        tasks_.emplace([pack_task]{ (*pack_task)(); });
+    }
+    cond_var_.notify_one();
     return future;
   }
-
 
  private:
 
   void start_threads() {
-    for (int i=0; i < max_n_threads_; ++i)
-      threads_.push_back(std::thread{&thread_pool::run, this});
+    threads_ = std::list<std::thread>(max_n_threads_);
+    for (auto& thread : threads_)
+      thread = std::thread{&thread_pool::run, this};
   }
 
   void run() {
-    while (!done_) {
-
+    for (;;) {
+      std::function<void()> task;
+      {
+        std::unique_lock<std::mutex> lock{mutex_};
+        cond_var_.wait(lock, [this]{ return done_ || !tasks_.empty(); });
+        if (done_ && tasks_.empty())
+            break;
+        task = std::move(tasks_.front());
+        tasks_.pop();
+      }
+      task();
     }
   }
 
@@ -73,9 +99,11 @@ class thread_pool {
   }
 
   std::list<std::thread> threads_;
-  std::atomic_bool done_;
+  bool done_;
   int max_n_threads_;
-  std::queue<std::packaged_task<ResultType()>> tasks_;
+  std::queue<std::function<void()>> tasks_;
+  std::condition_variable cond_var_;
+  std::mutex mutex_;
 };
 
 
