@@ -1,4 +1,4 @@
-cxxpool is a thread pool for C++
+cxxpool is a header-only thread pool for C++
 
 
 Install
