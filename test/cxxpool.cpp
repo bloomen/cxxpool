@@ -26,9 +26,21 @@ TEST(test_add_simple_task_void) {
 TEST(test_add_two_tasks) {
   cxxpool::thread_pool pool;
   auto future1 = pool.push([]{ return 1; });
-  auto future2 = pool.push([]{ return 2.; });
+  auto future2 = pool.push([](double value) { return value; }, 2.);
   ASSERT_EQUAL(1, future1.get());
   ASSERT_EQUAL(2., future2.get());
+}
+
+TEST(test_add_various_tasks_with_priorities) {
+  cxxpool::thread_pool pool;
+  auto future1 = pool.push([]{ return 1; });
+  auto future2 = pool.push(1, [](double value) { return value; }, 2.);
+  auto future3 = pool.push(2, [](double a, int b) { return a * b; }, 3, 2.);
+  auto future4 = pool.push(1, []{ return true; });
+  ASSERT_EQUAL(1, future1.get());
+  ASSERT_EQUAL(2., future2.get());
+  ASSERT_EQUAL(6., future3.get());
+  ASSERT_EQUAL(true, future4.get());
 }
 
 }
