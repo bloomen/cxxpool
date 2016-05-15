@@ -23,12 +23,12 @@ TEST(test_add_simple_task_void) {
   ASSERT_EQUAL(2, a);
 }
 
-TEST(test_add_two_tasks_int) {
+TEST(test_add_two_tasks) {
   cxxpool::thread_pool pool;
   auto future1 = pool.push([]{ return 1; });
-  auto future2 = pool.push([]{ return 2; });
+  auto future2 = pool.push([]{ return 2.; });
   ASSERT_EQUAL(1, future1.get());
-  ASSERT_EQUAL(2, future2.get());
+  ASSERT_EQUAL(2., future2.get());
 }
 
 }
