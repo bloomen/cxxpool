@@ -92,7 +92,7 @@ class thread_pool {
         cond_var_.wait(lock, [this]{ return done_ || !tasks_.empty(); });
         if (done_ && tasks_.empty())
             break;
-        task = std::move(tasks_.top());
+        task = tasks_.top();
         tasks_.pop();
       }
       task.callback();
