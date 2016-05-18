@@ -6,7 +6,6 @@
 #include <utility>
 #include <functional>
 #include <memory>
-#include <cstddef>
 #include <vector>
 
 
@@ -53,7 +52,7 @@ class thread_pool {
   int hardware_concurrency() const;
 
   struct priority_task {
-    typedef std::uint64_t counter_elem_t;
+    typedef unsigned int counter_elem_t;
     static std::vector<counter_elem_t> task_counter_;
 
     priority_task();
@@ -73,7 +72,8 @@ class thread_pool {
   std::mutex mutex_;
 };
 
-std::vector<std::uint64_t> thread_pool::priority_task::task_counter_{};
+std::vector<thread_pool::priority_task::counter_elem_t>
+thread_pool::priority_task::task_counter_{};
 
 thread_pool::thread_pool()
 : done_{false}, threads_{}, tasks_{},
