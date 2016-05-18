@@ -14,7 +14,9 @@ namespace cxxpool {
 
 
 class thread_pool_error : public std::runtime_error {
-  using std::runtime_error::runtime_error;
+ public:
+  explicit thread_pool_error(const std::string& message)
+  : std::runtime_error{message} {}
 };
 
 
