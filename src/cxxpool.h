@@ -110,7 +110,7 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   if (priority < 0)
     throw thread_pool_error{"priority smaller than zero: " +
                             std::to_string(priority)};
-  using result_type = typename std::result_of<Functor(Args...)>::type;
+  typedef typename std::result_of<Functor(Args...)>::type result_type;
   auto pack_task = std::make_shared<std::packaged_task<result_type()>>(
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
   auto future = pack_task->get_future();
@@ -153,9 +153,9 @@ thread_pool::priority_task::priority_task(
     std::function<void()> callback, int priority)
 : callback{std::move(callback)}, priority{priority}, order{}
 {
-  constexpr auto max = std::numeric_limits<
-      typename decltype(task_counter_)::value_type>::max();
-  if (task_counter_.empty() || task_counter_.back() == max)
+  if (task_counter_.empty() ||
+      task_counter_.back() == std::numeric_limits<
+      typename decltype(task_counter_)::value_type>::max())
     task_counter_.push_back(0);
   else
     ++task_counter_.back();
