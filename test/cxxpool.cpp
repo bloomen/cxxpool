@@ -45,7 +45,7 @@ TEST(test_add_various_tasks_with_priorities) {
 
 TEST(test_add_task_with_exception) {
   cxxpool::thread_pool pool;
-  auto future1 = pool.push([]{ throw std::bad_alloc{}; return 1; });
+  auto future1 = pool.push([]() -> int { throw std::bad_alloc{}; return 1; });
   auto future2 = pool.push([](double value) { return value; }, 2.);
   ASSERT_THROW(std::bad_alloc, [&future1] { future1.get(); });
   ASSERT_EQUAL(2., future2.get());
