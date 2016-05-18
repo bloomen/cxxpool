@@ -50,7 +50,7 @@ class thread_pool {
 
   void run_tasks();
 
-  int hardware_concurrency() const noexcept;
+  int hardware_concurrency() const;
 
   struct priority_task {
     typedef std::uint64_t counter_elem_t;
@@ -150,7 +150,7 @@ void thread_pool::run_tasks() {
   }
 }
 
-int thread_pool::hardware_concurrency() const noexcept {
+int thread_pool::hardware_concurrency() const {
   const auto n_threads = std::thread::hardware_concurrency();
   if (n_threads == 0)
     throw thread_pool_error{
