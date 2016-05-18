@@ -1,3 +1,9 @@
+0.2.0
+
+* fixed linking issue
+* made task counter non-static
+* code clean-up
+
 0.1.0
 
 * initial release
