@@ -53,13 +53,15 @@ class thread_pool {
   int hardware_concurrency() const noexcept;
 
   struct priority_task {
-    static std::vector<std::uint64_t> task_counter_;
+    typedef std::uint64_t counter_elem_t;
+    static std::vector<counter_elem_t> task_counter_;
+
     priority_task();
     priority_task(std::function<void()> callback, int priority);
 
     std::function<void()> callback;
     int priority;
-    decltype(task_counter_) order;
+    std::vector<counter_elem_t> order;
 
     bool operator<(const priority_task& other) const;
   };
@@ -165,8 +167,7 @@ thread_pool::priority_task::priority_task(
 : callback{std::move(callback)}, priority{priority}, order{}
 {
   if (task_counter_.empty() ||
-      task_counter_.back() == std::numeric_limits<
-      typename decltype(task_counter_)::value_type>::max())
+      task_counter_.back() == std::numeric_limits<counter_elem_t>::max())
     task_counter_.push_back(0);
   else
     ++task_counter_.back();
