@@ -46,6 +46,8 @@ class thread_pool {
 
  private:
 
+  void init(int n_threads);
+
   void run_tasks();
 
   int hardware_concurrency() const noexcept;
@@ -72,18 +74,17 @@ class thread_pool {
 std::vector<std::uint64_t> thread_pool::priority_task::task_counter_{};
 
 thread_pool::thread_pool()
-: thread_pool{0}
-{}
+: done_{false}, threads_{}, tasks_{},
+  cond_var_{}, mutex_{}
+{
+  init(0);
+}
 
 thread_pool::thread_pool(int n_threads)
 : done_{false}, threads_{}, tasks_{},
   cond_var_{}, mutex_{}
 {
-  if (n_threads <= 0)
-    n_threads = hardware_concurrency();
-  threads_ = std::vector<std::thread>(n_threads);
-  for (auto& thread : threads_)
-    thread = std::thread{&thread_pool::run_tasks, this};
+  init(n_threads);
 }
 
 thread_pool::~thread_pool() {
@@ -122,6 +123,14 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   }
   cond_var_.notify_one();
   return future;
+}
+
+void thread_pool::init(int n_threads) {
+  if (n_threads <= 0)
+    n_threads = hardware_concurrency();
+  threads_ = std::vector<std::thread>(n_threads);
+  for (auto& thread : threads_)
+    thread = std::thread{&thread_pool::run_tasks, this};
 }
 
 void thread_pool::run_tasks() {
