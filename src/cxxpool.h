@@ -14,8 +14,7 @@ namespace cxxpool {
 
 class thread_pool_error : public std::runtime_error {
  public:
-  explicit thread_pool_error(const std::string& message)
-  : std::runtime_error{message} {}
+  explicit thread_pool_error(const std::string& message);
 };
 
 
@@ -185,6 +184,9 @@ bool thread_pool::priority_task::operator<(const priority_task& other) const {
     return priority < other.priority;
   }
 }
+
+thread_pool_error::thread_pool_error(const std::string& message)
+: std::runtime_error{message} {}
 
 
 }  // namespace cxxpool
