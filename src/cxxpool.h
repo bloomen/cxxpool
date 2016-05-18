@@ -12,12 +12,6 @@
 namespace cxxpool {
 
 
-class thread_pool_error : public std::runtime_error {
- public:
-  explicit thread_pool_error(const std::string& message);
-};
-
-
 class thread_pool {
  public:
 
@@ -32,7 +26,7 @@ class thread_pool {
 
   ~thread_pool();
 
-  int n_threads() const noexcept;
+  int n_threads() const;
 
   template<typename Functor, typename... Args>
   auto push(Functor&& functor, Args&&... args)
@@ -50,12 +44,14 @@ class thread_pool {
 
   int hardware_concurrency() const;
 
-  struct priority_task {
-    typedef unsigned int counter_elem_t;
-    static std::vector<counter_elem_t> task_counter_;
+  void increment_task_counter();
 
+  typedef unsigned int counter_elem_t;
+
+  struct priority_task {
     priority_task();
-    priority_task(std::function<void()> callback, int priority);
+    priority_task(std::function<void()> callback, int priority,
+                  const std::vector<counter_elem_t>& task_counter);
 
     std::function<void()> callback;
     int priority;
@@ -67,27 +63,35 @@ class thread_pool {
   bool done_;
   std::vector<std::thread> threads_;
   std::priority_queue<priority_task> tasks_;
+  std::vector<counter_elem_t> task_counter_;
   std::condition_variable cond_var_;
   std::mutex mutex_;
 };
 
-std::vector<thread_pool::priority_task::counter_elem_t>
-thread_pool::priority_task::task_counter_{};
 
+class thread_pool_error : public std::runtime_error {
+ public:
+  explicit thread_pool_error(const std::string& message);
+};
+
+
+inline
 thread_pool::thread_pool()
 : done_{false}, threads_{}, tasks_{},
-  cond_var_{}, mutex_{}
+  task_counter_{}, cond_var_{}, mutex_{}
 {
   init(0);
 }
 
+inline
 thread_pool::thread_pool(int n_threads)
 : done_{false}, threads_{}, tasks_{},
-  cond_var_{}, mutex_{}
+  task_counter_{}, cond_var_{}, mutex_{}
 {
   init(n_threads);
 }
 
+inline
 thread_pool::~thread_pool() {
   {
     std::lock_guard<std::mutex> lock{mutex_};
@@ -98,17 +102,20 @@ thread_pool::~thread_pool() {
     thread.join();
 }
 
-int thread_pool::n_threads() const noexcept {
+inline
+int thread_pool::n_threads() const {
   return threads_.size();
 }
 
 template<typename Functor, typename... Args>
+inline
 auto thread_pool::push(Functor&& functor, Args&&... args)
   -> std::future<decltype(functor(args...))> {
   return push(0, std::forward<Functor>(functor), std::forward<Args>(args)...);
 }
 
 template<typename Functor, typename... Args>
+inline
 auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   -> std::future<decltype(functor(args...))> {
   if (priority < 0)
@@ -120,12 +127,14 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   auto future = pack_task->get_future();
   {
       std::lock_guard<std::mutex> lock{mutex_};
-      tasks_.emplace([pack_task]{ (*pack_task)(); }, priority);
+      increment_task_counter();
+      tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
   }
   cond_var_.notify_one();
   return future;
 }
 
+inline
 void thread_pool::init(int n_threads) {
   if (n_threads <= 0)
     n_threads = hardware_concurrency();
@@ -134,6 +143,7 @@ void thread_pool::init(int n_threads) {
     thread = std::thread{&thread_pool::run_tasks, this};
 }
 
+inline
 void thread_pool::run_tasks() {
   for (;;) {
     priority_task task;
@@ -149,6 +159,7 @@ void thread_pool::run_tasks() {
   }
 }
 
+inline
 int thread_pool::hardware_concurrency() const {
   const auto n_threads = std::thread::hardware_concurrency();
   if (n_threads == 0)
@@ -157,22 +168,29 @@ int thread_pool::hardware_concurrency() const {
   return static_cast<int>(n_threads);
 }
 
-thread_pool::priority_task::priority_task()
-: callback{}, priority{}, order{}
-{}
-
-thread_pool::priority_task::priority_task(
-    std::function<void()> callback, int priority)
-: callback{std::move(callback)}, priority{priority}, order{}
-{
+inline
+void thread_pool::increment_task_counter() {
   if (task_counter_.empty() ||
       task_counter_.back() == std::numeric_limits<counter_elem_t>::max())
     task_counter_.push_back(0);
   else
     ++task_counter_.back();
-  order = task_counter_;
 }
 
+
+inline
+thread_pool::priority_task::priority_task()
+: callback{}, priority{}, order{}
+{}
+
+inline
+thread_pool::priority_task::priority_task(
+    std::function<void()> callback, int priority,
+    const std::vector<counter_elem_t>& task_counter)
+: callback{std::move(callback)}, priority{priority}, order{task_counter}
+{}
+
+inline
 bool thread_pool::priority_task::operator<(const priority_task& other) const {
   if (priority == other.priority) {
     if (order.size() == other.order.size()) {
@@ -185,6 +203,8 @@ bool thread_pool::priority_task::operator<(const priority_task& other) const {
   }
 }
 
+
+inline
 thread_pool_error::thread_pool_error(const std::string& message)
 : std::runtime_error{message} {}
 
