@@ -38,11 +38,11 @@ class thread_pool {
 
   template<typename Functor, typename... Args>
   auto push(Functor&& functor, Args&&... args)
-    -> std::future<typename std::result_of<Functor(Args...)>::type>;
+    -> std::future<decltype(functor(args...))>;
 
   template<typename Functor, typename... Args>
   auto push(int priority, Functor&& functor, Args&&... args)
-    -> std::future<typename std::result_of<Functor(Args...)>::type>;
+    -> std::future<decltype(functor(args...))>;
 
  private:
 
@@ -105,17 +105,17 @@ int thread_pool::n_threads() const noexcept {
 
 template<typename Functor, typename... Args>
 auto thread_pool::push(Functor&& functor, Args&&... args)
-  -> std::future<typename std::result_of<Functor(Args...)>::type> {
+  -> std::future<decltype(functor(args...))> {
   return push(0, std::forward<Functor>(functor), std::forward<Args>(args)...);
 }
 
 template<typename Functor, typename... Args>
 auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
-  -> std::future<typename std::result_of<Functor(Args...)>::type> {
+  -> std::future<decltype(functor(args...))> {
   if (priority < 0)
     throw thread_pool_error{"priority smaller than zero: " +
                             std::to_string(priority)};
-  typedef typename std::result_of<Functor(Args...)>::type result_type;
+  typedef decltype(functor(args...)) result_type;
   auto pack_task = std::make_shared<std::packaged_task<result_type()>>(
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
   auto future = pack_task->get_future();
