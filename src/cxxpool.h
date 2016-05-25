@@ -10,28 +10,66 @@
 
 
 namespace cxxpool {
-
-
+/**
+ * A thread pool written in C++11.
+ *
+ * Constructing the thread pool launches the worker threads while
+ * destructing joins them. The threads will be alive for as long as the
+ * thread pool is not destructed.
+ *
+ * Tasks can be pushed into the pool with and w/o providing a priority >= 0.
+ * Not providing a priority is equivalent to providing a priority of 0.
+ * Those tasks are processed first that have the highest priority.
+ * If priorities are equal those tasks are processed first that were pushed
+ * first into the pool (FIFO).
+ */
 class thread_pool {
  public:
-
+  /**
+   * Constructor. The number of threads to launch is determined by calling
+   * std::thread::hardware_concurrency()
+   * @throws cxxpool::thread_pool_error if hardware concurrency is invalid
+   */
   thread_pool();
-
+  /**
+   * Constructor
+   * @param n_threads The number of threads to launch. Passing 0 is equivalent
+   *  to calling the no-argument constructor
+   * @throws cxxpool::thread_pool_error if n_threads < 0
+   */
   explicit thread_pool(int n_threads);
+  /**
+   * Destructor. Joins all threads launched in the constructor. Waits for all
+   * running tasks to complete
+   */
+  ~thread_pool();
 
   thread_pool(const thread_pool&) = delete;
   thread_pool& operator=(const thread_pool&) = delete;
   thread_pool(thread_pool&&) = delete;
   thread_pool& operator=(thread_pool&&) = delete;
 
-  ~thread_pool();
-
+  /**
+   * Returns the number of threads launched in the constructor
+   */
   int n_threads() const;
-
+  /**
+   * Pushes a new task into the thread pool. The task will have a priority of 0
+   * @param functor The functor to call
+   * @param args The arguments to pass to the functor when calling it
+   * @return A future associated to the underlying task
+   */
   template<typename Functor, typename... Args>
   auto push(Functor&& functor, Args&&... args)
     -> std::future<decltype(functor(args...))>;
-
+  /**
+   * Pushes a new task into the thread pool while providing a priority
+   * @param priority A task priority. Higher priorities are processed first
+   * @param functor The functor to call
+   * @param args The arguments to pass to the functor when calling it
+   * @return A future associated to the underlying task
+   * @throws cxxpool::thread_pool_error if priority < 0
+   */
   template<typename Functor, typename... Args>
   auto push(int priority, Functor&& functor, Args&&... args)
     -> std::future<decltype(functor(args...))>;
