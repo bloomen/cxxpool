@@ -78,7 +78,7 @@ class priority_task {
  * A header-only, portable thread pool for C++
  *
  * Constructing the thread pool launches the worker threads while
- * destructing joins them. The threads will be alive for as long as the
+ * destructing it joins them. The threads will be alive for as long as the
  * thread pool is not destructed.
  *
  * Tasks can be pushed into the pool with and w/o providing a priority >= 0.
@@ -92,7 +92,7 @@ class thread_pool {
   /**
    * Constructor. The number of threads to launch is determined by calling
    * std::thread::hardware_concurrency()
-   * @throws cxxpool::thread_pool_error if hardware concurrency is invalid
+   * @throws cxxpool::thread_pool_error if hardware concurrency is unavailable
    */
   thread_pool();
   /**
@@ -121,7 +121,7 @@ class thread_pool {
    * Pushes a new task into the thread pool. The task will have a priority of 0
    * @param functor The functor to call
    * @param args The arguments to pass to the functor when calling it
-   * @return A future associated to the underlying task
+   * @return The future associated to the underlying task
    */
   template<typename Functor, typename... Args>
   auto push(Functor&& functor, Args&&... args)
@@ -131,7 +131,7 @@ class thread_pool {
    * @param priority A task priority. Higher priorities are processed first
    * @param functor The functor to call
    * @param args The arguments to pass to the functor when calling it
-   * @return A future associated to the underlying task
+   * @return The future associated to the underlying task
    * @throws cxxpool::thread_pool_error if priority < 0
    */
   template<typename Functor, typename... Args>
