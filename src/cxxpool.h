@@ -1,3 +1,11 @@
+/**
+ * A header-only, portable thread pool for C++
+ * @version 0.3.0
+ * @author Christian Blume (chr.blume@gmail.com)
+ * @copyright 2015-2016 by Christian Blume
+ * cxxpool is released under the MIT license:
+ * http://www.opensource.org/licenses/mit-license.php
+ */
 #pragma once
 #include <thread>
 #include <future>
