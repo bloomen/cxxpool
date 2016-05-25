@@ -57,34 +57,59 @@ TEST(test_thread_pool_add_task_with_exception) {
 }
 
 TEST(test_infinite_counter_increment_operator) {
-  cxxpool::detail::infinite_counter c1;
+  cxxpool::detail::infinite_counter<int> c1;
   auto c2 = ++c1;
   ASSERT_FALSE(c1 > c2);
   ASSERT_FALSE(c2 > c1);
 }
 
 TEST(test_infinite_counter_no_increment) {
-  cxxpool::detail::infinite_counter c1;
-  cxxpool::detail::infinite_counter c2;
+  cxxpool::detail::infinite_counter<unsigned int> c1;
+  cxxpool::detail::infinite_counter<unsigned int> c2;
   ASSERT_FALSE(c1 > c2);
   ASSERT_FALSE(c2 > c1);
 }
 
 TEST(test_infinite_counter_one_increments) {
-  cxxpool::detail::infinite_counter c1;
-  cxxpool::detail::infinite_counter c2;
+  cxxpool::detail::infinite_counter<int> c1;
+  cxxpool::detail::infinite_counter<int> c2;
   ++c1;
   ASSERT_TRUE(c1 > c2);
   ASSERT_FALSE(c2 > c1);
 }
 
 TEST(test_infinite_counter_both_increment) {
-  cxxpool::detail::infinite_counter c1;
-  cxxpool::detail::infinite_counter c2;
+  cxxpool::detail::infinite_counter<int> c1;
+  cxxpool::detail::infinite_counter<int> c2;
   ++c1;
   ++c2;
   ASSERT_FALSE(c1 > c2);
   ASSERT_FALSE(c2 > c1);
+  ++c1;
+  ASSERT_TRUE(c1 > c2);
+  ASSERT_FALSE(c2 > c1);
+}
+
+TEST(test_infinite_counter_with_both_wrapping) {
+  cxxpool::detail::infinite_counter<int, 2> c1;
+  cxxpool::detail::infinite_counter<int, 2> c2;
+  ++c1; ++c2;
+  ++c1; ++c2;
+  ASSERT_FALSE(c1 > c2);
+  ASSERT_FALSE(c2 > c1);
+  ++c1; ++c2;
+  ASSERT_FALSE(c1 > c2);
+  ASSERT_FALSE(c2 > c1);
+  ++c1;
+  ASSERT_TRUE(c1 > c2);
+  ASSERT_FALSE(c2 > c1);
+}
+
+TEST(test_infinite_counter_with_one_wrapping) {
+  cxxpool::detail::infinite_counter<int, 2> c1;
+  cxxpool::detail::infinite_counter<int, 2> c2;
+  ++c1; ++c2;
+  ++c1;
   ++c1;
   ASSERT_TRUE(c1 > c2);
   ASSERT_FALSE(c2 > c1);
@@ -110,7 +135,7 @@ void some_function() {}
 void some_other_function() {}
 
 TEST(test_priority_task_with_different_priorities) {
-  cxxpool::detail::infinite_counter c;
+  cxxpool::detail::infinite_counter<unsigned int> c;
   cxxpool::detail::priority_task t1{some_function, 3, c};
   ++c;
   cxxpool::detail::priority_task t2{some_function, 2, c};
@@ -120,7 +145,7 @@ TEST(test_priority_task_with_different_priorities) {
 }
 
 TEST(test_priority_task_with_same_priorities) {
-  cxxpool::detail::infinite_counter c;
+  cxxpool::detail::infinite_counter<unsigned int> c;
   cxxpool::detail::priority_task t1{some_function, 2, c};
   ++c;
   cxxpool::detail::priority_task t2{some_other_function, 2, c};
@@ -130,7 +155,7 @@ TEST(test_priority_task_with_same_priorities) {
 }
 
 TEST(test_priority_task_with_same_priorities_and_same_order) {
-  cxxpool::detail::infinite_counter c;
+  cxxpool::detail::infinite_counter<unsigned int> c;
   cxxpool::detail::priority_task t1{some_function, 2, c};
   cxxpool::detail::priority_task t2{some_function, 2, c};
   ASSERT_FALSE(t2 < t1);

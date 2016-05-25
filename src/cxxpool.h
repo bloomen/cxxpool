@@ -15,25 +15,43 @@ namespace cxxpool {
 namespace detail {
 
 
+template<typename IndexType,
+         IndexType max = std::numeric_limits<IndexType>::max()>
 class infinite_counter {
  public:
-  infinite_counter();
+  infinite_counter()
+  : count_{0}
+  {}
 
-  infinite_counter& operator++();
+  infinite_counter& operator++() {
+    if (count_.back() == max)
+      count_.push_back(0);
+    else
+      ++count_.back();
+    return *this;
+  }
 
-  bool operator>(const infinite_counter& other) const;
+  bool operator>(const infinite_counter& other) const {
+    if (count_.size() == other.count_.size()) {
+      return count_.back() > other.count_.back();
+    } else {
+      return count_.size() > other.count_.size();
+    }
+  }
 
  private:
-  std::vector<unsigned int> count_;
+  std::vector<IndexType> count_;
 };
 
 
-struct priority_task {
+class priority_task {
  public:
+  typedef unsigned int counter_elem_t;
+
   priority_task();
 
   priority_task(std::function<void()> callback, int priority,
-                detail::infinite_counter order);
+                detail::infinite_counter<counter_elem_t> order);
 
   bool operator<(const priority_task& other) const;
 
@@ -42,14 +60,14 @@ struct priority_task {
  private:
   std::function<void()> callback_;
   int priority_;
-  detail::infinite_counter order_;
+  detail::infinite_counter<counter_elem_t> order_;
 };
 
 
 }  // namespace detail
 
 /**
- * A thread pool written in C++11.
+ * A header-only, portable thread pool for C++
  *
  * Constructing the thread pool launches the worker threads while
  * destructing joins them. The threads will be alive for as long as the
@@ -123,7 +141,8 @@ class thread_pool {
   bool done_;
   std::vector<std::thread> threads_;
   std::priority_queue<detail::priority_task> tasks_;
-  detail::infinite_counter task_counter_;
+  detail::infinite_counter<typename detail::priority_task::counter_elem_t>
+    task_counter_;
   std::condition_variable cond_var_;
   std::mutex mutex_;
 };
@@ -235,37 +254,13 @@ namespace detail {
 
 
 inline
-infinite_counter::infinite_counter()
-: count_{0}
-{}
-
-inline
-infinite_counter& infinite_counter::operator++() {
-  if (count_.back() == std::numeric_limits<unsigned int>::max())
-    count_.push_back(0);
-  else
-    ++count_.back();
-  return *this;
-}
-
-inline
-bool infinite_counter::operator>(const infinite_counter& other) const {
-  if (count_.size() == other.count_.size()) {
-    return count_.back() > other.count_.back();
-  } else {
-    return count_.size() > other.count_.size();
-  }
-}
-
-
-inline
 priority_task::priority_task()
 : callback_{}, priority_{}, order_{}
 {}
 
 inline
 priority_task::priority_task(std::function<void()> callback, int priority,
-                             detail::infinite_counter order)
+                             detail::infinite_counter<counter_elem_t> order)
 : callback_{std::move(callback)}, priority_(priority),
   order_{std::move(order)}
 {}
