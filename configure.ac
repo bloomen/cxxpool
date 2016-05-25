@@ -1,8 +1,9 @@
-AC_INIT([cxxpool],[0.2.0],[chr.blume@gmail.com],[cxxpool],[https://github.com/bloomen/cxxpool])
+AC_INIT([cxxpool],[0.3.0],[chr.blume@gmail.com],[cxxpool],[https://github.com/bloomen/cxxpool])
 AC_CONFIG_SRCDIR([src/cxxpool.h])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([1.9])
+: ${CXXFLAGS=""}
 AC_PROG_CXX
 AC_LANG([C++])
 
