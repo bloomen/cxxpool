@@ -1,4 +1,4 @@
-cxxpool is a header-only, portable thread pool for C++
+cxxpool is a portable, header-only thread pool for C++
 
 
 Install
@@ -12,8 +12,8 @@ OR
 Copy src/cxxpool.h to your project.
 
 
-cxxpool has no dependencies except for the standard library.
-Supported compilers are: g++ (>=4.6), clang++ (>=3.2), icc (>=14)
+cxxpool is written using C++11 and has no dependencies except for the 
+standard library. Supported compilers: g++ (>=4.6), clang++ (>=3.2), icc (>=14)
 
 To build and run the tests the following libraries are required:
 - libunittest (http://libunittest.sourceforge.net)
