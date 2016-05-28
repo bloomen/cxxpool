@@ -75,7 +75,7 @@ class priority_task {
 }  // namespace detail
 
 /**
- * A header-only, portable thread pool for C++
+ * A portable, header-only thread pool for C++
  *
  * Constructing the thread pool launches the worker threads while
  * destructing it joins them. The threads will be alive for as long as the
