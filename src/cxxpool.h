@@ -1,6 +1,6 @@
 /**
  * A portable, header-only thread pool for C++
- * @version 0.3.0
+ * @version 0.4.0 (dev)
  * @author Christian Blume (chr.blume@gmail.com)
  * @copyright 2015-2016 by Christian Blume
  * cxxpool is released under the MIT license:
@@ -15,16 +15,119 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 
 namespace cxxpool {
+
+/**
+ * Waits until all futures contain results
+ */
+template<typename Iterator>
+void wait(Iterator first, Iterator last) {
+  for (; first != last; ++first)
+    first->wait();
+}
+/**
+ * Waits until all futures contain results with a given timeout duration and
+ * returns a container of std::future::status
+ */
+template<typename Result, typename Iterator, typename Rep, typename Period>
+Result wait_for(Iterator first, Iterator last,
+                const std::chrono::duration<Rep, Period>& timeout_duration,
+                Result result) {
+  for (; first != last; ++first)
+    result.emplace_back(first->wait_for(timeout_duration));
+  return result;
+}
+/**
+ * Waits until all futures contain results with a given timeout duration and
+ * returns a vector of std::future::status
+ */
+template<typename Iterator, typename Rep, typename Period>
+std::vector<std::future_status> wait_for(
+    Iterator first, Iterator last,
+    const std::chrono::duration<Rep, Period>& timeout_duration) {
+  return wait_for(first, last, timeout_duration,
+                  std::vector<std::future_status>{});
+}
+/**
+ * Waits until all futures contain results with a given timeout time and
+ * returns a container of std::future::status
+ */
+template<typename Result, typename Iterator, typename Clock, typename Duration>
+Result wait_until(
+     Iterator first, Iterator last,
+     const std::chrono::time_point<Clock, Duration>& timeout_time,
+     Result result) {
+  for (; first != last; ++first)
+    result.emplace_back(first->wait_until(timeout_time));
+  return result;
+}
+/**
+ * Waits until all futures contain results with a given timeout time and
+ * returns a vector of std::future::status
+ */
+template<typename Iterator, typename Clock, typename Duration>
+std::vector<std::future_status> wait_until(
+      Iterator first, Iterator last,
+      const std::chrono::time_point<Clock, Duration>& timeout_time) {
+  return wait_until(first, last, timeout_time,
+                    std::vector<std::future_status>{});
+}
 
 
 namespace detail {
 
 
-template<typename IndexType,
-         IndexType max = std::numeric_limits<IndexType>::max()>
+template<typename Iterator>
+struct future_info {
+  typedef typename std::iterator_traits<Iterator>::value_type future_type;
+  typedef typename std::result_of<
+      decltype(&future_type::get)(future_type)>::type value_type;
+  static constexpr bool is_void = std::is_void<value_type>::value;
+};
+
+
+}  // namespace detail
+
+/**
+ * Calls get() on all futures
+ */
+template<typename Iterator, typename = typename std::enable_if<
+                            detail::future_info<Iterator>::is_void>::type>
+void get(Iterator first, Iterator last) {
+  for (; first != last; ++first)
+    first->get();
+}
+/**
+ * Calls get() on all futures and stores the results in the returned container
+ */
+template<typename Result, typename Iterator,
+                          typename = typename std::enable_if<
+                          !detail::future_info<Iterator>::is_void>::type>
+Result get(Iterator first, Iterator last, Result result) {
+  for (; first != last; ++first)
+    result.emplace_back(first->get());
+  return result;
+}
+/**
+ * Calls get() on all futures and stores the results in the returned vector
+ */
+template<typename Iterator,
+         typename = typename std::enable_if<
+         !detail::future_info<Iterator>::is_void>::type>
+std::vector<typename detail::future_info<Iterator>::value_type>
+get(Iterator first, Iterator last) {
+  return cxxpool::get(first, last,
+         std::vector<typename detail::future_info<Iterator>::value_type>{});
+}
+
+
+namespace detail {
+
+
+template<typename Index, Index max = std::numeric_limits<Index>::max()>
 class infinite_counter {
  public:
   infinite_counter()
@@ -48,7 +151,7 @@ class infinite_counter {
   }
 
  private:
-  std::vector<IndexType> count_;
+  std::vector<Index> count_;
 };
 
 

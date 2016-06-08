@@ -1,5 +1,6 @@
 #include <libunittest/all.hpp>
 #include "../src/cxxpool.h"
+#include <list>
 
 
 COLLECTION(test_cxxpool) {
@@ -160,6 +161,53 @@ TEST(test_priority_task_with_same_priorities_and_same_order) {
   cxxpool::detail::priority_task t2{some_function, 2, c};
   ASSERT_FALSE(t2 < t1);
   ASSERT_FALSE(t1 < t2);
+}
+
+TEST(test_result_get_void_empty) {
+  std::vector<std::future<void>> futures;
+  cxxpool::get(futures.begin(), futures.end());
+}
+
+TEST(test_result_get_void) {
+  cxxpool::thread_pool pool{4};
+  int a = 0;
+  int b = 0;
+  std::vector<std::future<void>> futures;
+  futures.emplace_back(pool.push([&a]{ a = 1; }));
+  futures.emplace_back(pool.push([&b]{ b = 2; }));
+  cxxpool::get(futures.begin(), futures.end());
+  ASSERT_EQUAL(1, a);
+  ASSERT_EQUAL(2, b);
+}
+
+TEST(test_result_get_int_empty) {
+  std::vector<std::future<int>> futures;
+  const auto result = cxxpool::get(futures.begin(), futures.end());
+  ASSERT_TRUE(result.empty());
+}
+
+TEST(test_result_get_int) {
+  cxxpool::thread_pool pool{4};
+  std::vector<std::future<int>> futures;
+  futures.emplace_back(pool.push([]{ return 1; }));
+  futures.emplace_back(pool.push([]{ return 2; }));
+  const auto result = cxxpool::get(futures.begin(), futures.end());
+  ASSERT_EQUAL(2, result.size());
+  ASSERT_EQUAL(1, result[0]);
+  ASSERT_EQUAL(2, result[1]);
+}
+
+TEST(test_result_get_int_list) {
+  cxxpool::thread_pool pool{4};
+  std::vector<std::future<int>> futures;
+  futures.emplace_back(pool.push([]{ return 1; }));
+  futures.emplace_back(pool.push([]{ return 2; }));
+  auto result = cxxpool::get(futures.begin(), futures.end(), std::list<int>{});
+  ASSERT_EQUAL(2, result.size());
+  auto it = result.begin();
+  ASSERT_EQUAL(1, *it);
+  ++it;
+  ASSERT_EQUAL(2, *it);
 }
 
 
