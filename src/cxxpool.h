@@ -240,6 +240,24 @@ class thread_pool {
   template<typename Functor, typename... Args>
   auto push(int priority, Functor&& functor, Args&&... args)
     -> std::future<decltype(functor(args...))>;
+  /**
+   * Waits until all tasks finished
+   */
+  void wait();
+  /**
+   * Waits until all tasks finished with a given timeout duration
+   * @param timeout_duration The timeout duration
+   * @return true if all tasks are finished, false otherwise
+   */
+  template<typename Rep, typename Period>
+  bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration);
+  /**
+   * Waits until all tasks finished with a given timeout time
+   * @param timeout_time The timeout time
+   * @return true if all tasks are finished, false otherwise
+   */
+  template<typename Clock, typename Duration>
+  bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time);
 
  private:
 
@@ -247,15 +265,18 @@ class thread_pool {
 
   int hardware_concurrency() const;
 
-  void run_tasks();
+  void worker();
 
   bool done_;
   std::vector<std::thread> threads_;
   std::priority_queue<detail::priority_task> tasks_;
   detail::infinite_counter<typename detail::priority_task::counter_elem_t>
     task_counter_;
-  std::condition_variable cond_var_;
-  std::mutex mutex_;
+  std::atomic<std::uint64_t> task_balance_;
+  std::condition_variable task_cond_var_;
+  std::mutex task_mutex_;
+  std::condition_variable wait_cond_var_;
+  std::mutex wait_mutex_;
 };
 
 
@@ -269,16 +290,16 @@ class thread_pool_error : public std::runtime_error {
 
 inline
 thread_pool::thread_pool()
-: done_{false}, threads_{}, tasks_{},
-  task_counter_{}, cond_var_{}, mutex_{}
+: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
+  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{}
 {
   init(0);
 }
 
 inline
 thread_pool::thread_pool(int n_threads)
-: done_{false}, threads_{}, tasks_{},
-  task_counter_{}, cond_var_{}, mutex_{}
+: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
+  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{}
 {
   init(n_threads);
 }
@@ -286,10 +307,10 @@ thread_pool::thread_pool(int n_threads)
 inline
 thread_pool::~thread_pool() {
   {
-    std::lock_guard<std::mutex> lock{mutex_};
+    std::lock_guard<std::mutex> lock{task_mutex_};
     done_ = true;
   }
-  cond_var_.notify_all();
+  task_cond_var_.notify_all();
   for (auto& thread : threads_)
     thread.join();
 }
@@ -318,12 +339,34 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
   auto future = pack_task->get_future();
   {
-      std::lock_guard<std::mutex> lock{mutex_};
+      std::lock_guard<std::mutex> lock{task_mutex_};
       ++task_counter_;
+      ++task_balance_;
       tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
   }
-  cond_var_.notify_one();
+  task_cond_var_.notify_one();
   return future;
+}
+
+void thread_pool::wait() {
+  std::unique_lock<std::mutex> lock{wait_mutex_};
+  wait_cond_var_.wait(lock, [this]{ return task_balance_ == 0; });
+}
+
+template<typename Rep, typename Period>
+bool thread_pool::wait_for(
+    const std::chrono::duration<Rep, Period>& timeout_duration) {
+  std::unique_lock<std::mutex> lock{wait_mutex_};
+  return wait_cond_var_.wait_for(lock, timeout_duration,
+                                 [this]{ return task_balance_ == 0; });
+}
+
+template<typename Clock, typename Duration>
+bool thread_pool::wait_until(
+    const std::chrono::time_point<Clock, Duration>& timeout_time) {
+  std::unique_lock<std::mutex> lock{wait_mutex_};
+  return wait_cond_var_.wait_until(lock, timeout_time,
+                                   [this]{ return task_balance_ == 0; });
 }
 
 inline
@@ -332,7 +375,7 @@ void thread_pool::init(int n_threads) {
     n_threads = hardware_concurrency();
   threads_ = std::vector<std::thread>(n_threads);
   for (auto& thread : threads_)
-    thread = std::thread{&thread_pool::run_tasks, this};
+    thread = std::thread{&thread_pool::worker, this};
 }
 
 inline
@@ -345,18 +388,20 @@ int thread_pool::hardware_concurrency() const {
 }
 
 inline
-void thread_pool::run_tasks() {
+void thread_pool::worker() {
   for (;;) {
     detail::priority_task task;
     {
-      std::unique_lock<std::mutex> lock{mutex_};
-      cond_var_.wait(lock, [this]{ return done_ || !tasks_.empty(); });
+      std::unique_lock<std::mutex> lock{task_mutex_};
+      task_cond_var_.wait(lock, [this]{ return done_ || !tasks_.empty(); });
       if (done_ && tasks_.empty())
           break;
       task = tasks_.top();
       tasks_.pop();
     }
     task.callback()();
+    --task_balance_;
+    wait_cond_var_.notify_all();
   }
 }
 
