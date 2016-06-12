@@ -210,5 +210,50 @@ TEST(test_result_get_int_list) {
   ASSERT_EQUAL(2, *it);
 }
 
+TEST(test_wait) {
+  cxxpool::thread_pool pool{4};
+  int a = 0;
+  std::vector<std::future<void>> futures;
+  futures.emplace_back(pool.push([&a]{
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    a = 1;
+  }));
+  cxxpool::wait(futures.begin(), futures.end());
+  ASSERT_EQUAL(1, a);
+}
+
+TEST(test_wait_for) {
+  cxxpool::thread_pool pool{4};
+  int a = 0;
+  std::vector<std::future<void>> futures;
+  futures.emplace_back(pool.push([&a]{
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    a = 1;
+  }));
+  cxxpool::wait_for(futures.begin(), futures.end(),
+                    std::chrono::milliseconds(10));
+  ASSERT_EQUAL(0, a);
+  cxxpool::wait_for(futures.begin(), futures.end(),
+                    std::chrono::milliseconds(12));
+  ASSERT_EQUAL(1, a);
+}
+
+TEST(test_wait_until) {
+  cxxpool::thread_pool pool{4};
+  int a = 0;
+  std::vector<std::future<void>> futures;
+  futures.emplace_back(pool.push([&a]{
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    a = 1;
+  }));
+  const auto now = std::chrono::steady_clock::now();
+  cxxpool::wait_until(futures.begin(), futures.end(),
+                      now + std::chrono::milliseconds(10));
+  ASSERT_EQUAL(0, a);
+  cxxpool::wait_until(futures.begin(), futures.end(),
+                      now + std::chrono::milliseconds(22));
+  ASSERT_EQUAL(1, a);
+}
+
 
 }
