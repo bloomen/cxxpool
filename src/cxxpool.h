@@ -1,6 +1,6 @@
 /**
  * A portable, header-only thread pool for C++
- * @version 0.4.0 (dev)
+ * @version 0.4.0
  * @author Christian Blume (chr.blume@gmail.com)
  * @copyright 2015-2016 by Christian Blume
  * cxxpool is released under the MIT license:
@@ -16,6 +16,7 @@
 #include <memory>
 #include <vector>
 #include <chrono>
+#include <cstddef>
 
 
 namespace cxxpool {
@@ -157,7 +158,7 @@ class infinite_counter {
 
 class priority_task {
  public:
-  typedef unsigned int counter_elem_t;
+  typedef std::uint64_t counter_elem_t;
 
   priority_task();
 
