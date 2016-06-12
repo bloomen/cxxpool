@@ -244,21 +244,21 @@ class thread_pool {
   /**
    * Waits until all tasks finished
    */
-  void wait();
+  void wait() const;
   /**
    * Waits until all tasks finished with a given timeout duration
    * @param timeout_duration The timeout duration
    * @return true if all tasks are finished, false otherwise
    */
   template<typename Rep, typename Period>
-  bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration);
+  bool wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const;
   /**
    * Waits until all tasks finished with a given timeout time
    * @param timeout_time The timeout time
    * @return true if all tasks are finished, false otherwise
    */
   template<typename Clock, typename Duration>
-  bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time);
+  bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const;
 
  private:
 
@@ -276,8 +276,8 @@ class thread_pool {
   std::atomic<std::uint64_t> task_balance_;
   std::condition_variable task_cond_var_;
   std::mutex task_mutex_;
-  std::condition_variable wait_cond_var_;
-  std::mutex wait_mutex_;
+  mutable std::condition_variable wait_cond_var_;
+  mutable std::mutex wait_mutex_;
 };
 
 
@@ -349,14 +349,14 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   return future;
 }
 
-void thread_pool::wait() {
+void thread_pool::wait() const {
   std::unique_lock<std::mutex> lock{wait_mutex_};
   wait_cond_var_.wait(lock, [this]{ return task_balance_ == 0; });
 }
 
 template<typename Rep, typename Period>
 bool thread_pool::wait_for(
-    const std::chrono::duration<Rep, Period>& timeout_duration) {
+    const std::chrono::duration<Rep, Period>& timeout_duration) const {
   std::unique_lock<std::mutex> lock{wait_mutex_};
   return wait_cond_var_.wait_for(lock, timeout_duration,
                                  [this]{ return task_balance_ == 0; });
@@ -364,7 +364,7 @@ bool thread_pool::wait_for(
 
 template<typename Clock, typename Duration>
 bool thread_pool::wait_until(
-    const std::chrono::time_point<Clock, Duration>& timeout_time) {
+    const std::chrono::time_point<Clock, Duration>& timeout_time) const {
   std::unique_lock<std::mutex> lock{wait_mutex_};
   return wait_cond_var_.wait_until(lock, timeout_time,
                                    [this]{ return task_balance_ == 0; });
