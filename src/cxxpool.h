@@ -341,8 +341,9 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   auto future = pack_task->get_future();
   {
       std::lock_guard<std::mutex> lock{task_mutex_};
-      ++task_counter_;
-      ++task_balance_;
+      if (done_)
+        throw thread_pool_error{"push called while pool is shutting down"};
+      ++task_counter_; ++task_balance_;
       tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
   }
   task_cond_var_.notify_one();
