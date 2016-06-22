@@ -1,3 +1,9 @@
+1.0.0
+
+* added various wait/get functions for dealing with containers of futures
+* added wait methods to the pool to wait until all tasks finished
+* added more tests and documentation
+
 0.3.0
 
 * added class and method documentation
