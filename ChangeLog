@@ -1,3 +1,7 @@
+1.0.1
+
+* fixed linking issue
+
 1.0.0
 
 * added various wait/get functions for dealing with containers of futures

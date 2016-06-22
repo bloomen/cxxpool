@@ -1,6 +1,6 @@
 /**
  * A portable, header-only thread pool for C++
- * @version 1.0.0
+ * @version 1.0.1
  * @author Christian Blume (chr.blume@gmail.com)
  * @copyright 2015-2016 by Christian Blume
  * cxxpool is released under the MIT license:
@@ -25,6 +25,7 @@ namespace cxxpool {
  * Waits until all futures contain results
  */
 template<typename Iterator>
+inline
 void wait(Iterator first, Iterator last) {
   for (; first != last; ++first)
     first->wait();
@@ -34,6 +35,7 @@ void wait(Iterator first, Iterator last) {
  * returns a container of std::future::status
  */
 template<typename Result, typename Iterator, typename Rep, typename Period>
+inline
 Result wait_for(Iterator first, Iterator last,
                 const std::chrono::duration<Rep, Period>& timeout_duration,
                 Result result) {
@@ -46,6 +48,7 @@ Result wait_for(Iterator first, Iterator last,
  * returns a vector of std::future::status
  */
 template<typename Iterator, typename Rep, typename Period>
+inline
 std::vector<std::future_status> wait_for(
     Iterator first, Iterator last,
     const std::chrono::duration<Rep, Period>& timeout_duration) {
@@ -57,6 +60,7 @@ std::vector<std::future_status> wait_for(
  * returns a container of std::future::status
  */
 template<typename Result, typename Iterator, typename Clock, typename Duration>
+inline
 Result wait_until(
      Iterator first, Iterator last,
      const std::chrono::time_point<Clock, Duration>& timeout_time,
@@ -70,6 +74,7 @@ Result wait_until(
  * returns a vector of std::future::status
  */
 template<typename Iterator, typename Clock, typename Duration>
+inline
 std::vector<std::future_status> wait_until(
       Iterator first, Iterator last,
       const std::chrono::time_point<Clock, Duration>& timeout_time) {
@@ -97,6 +102,7 @@ struct future_info {
  */
 template<typename Iterator, typename = typename std::enable_if<
                             detail::future_info<Iterator>::is_void>::type>
+inline
 void get(Iterator first, Iterator last) {
   for (; first != last; ++first)
     first->get();
@@ -107,6 +113,7 @@ void get(Iterator first, Iterator last) {
 template<typename Result, typename Iterator,
                           typename = typename std::enable_if<
                           !detail::future_info<Iterator>::is_void>::type>
+inline
 Result get(Iterator first, Iterator last, Result result) {
   for (; first != last; ++first)
     result.emplace_back(first->get());
@@ -118,6 +125,7 @@ Result get(Iterator first, Iterator last, Result result) {
 template<typename Iterator,
          typename = typename std::enable_if<
          !detail::future_info<Iterator>::is_void>::type>
+inline
 std::vector<typename detail::future_info<Iterator>::value_type>
 get(Iterator first, Iterator last) {
   return cxxpool::get(first, last,
@@ -350,12 +358,14 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   return future;
 }
 
+inline
 void thread_pool::wait() const {
   std::unique_lock<std::mutex> lock{wait_mutex_};
   wait_cond_var_.wait(lock, [this]{ return task_balance_ == 0; });
 }
 
 template<typename Rep, typename Period>
+inline
 bool thread_pool::wait_for(
     const std::chrono::duration<Rep, Period>& timeout_duration) const {
   std::unique_lock<std::mutex> lock{wait_mutex_};
@@ -364,6 +374,7 @@ bool thread_pool::wait_for(
 }
 
 template<typename Clock, typename Duration>
+inline
 bool thread_pool::wait_until(
     const std::chrono::time_point<Clock, Duration>& timeout_time) const {
   std::unique_lock<std::mutex> lock{wait_mutex_};
