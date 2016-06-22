@@ -277,5 +277,15 @@ TEST(test_wait_until) {
   ASSERT_EQUAL(1, a);
 }
 
+TEST(test_parallel_pushes) {
+  auto pool = std::make_shared<cxxpool::thread_pool>(4);
+  for (size_t i=0; i<1000; ++i) {
+    auto t1 = std::thread([&pool]() { pool->push([]{}); });
+    auto t2 = std::thread([&pool]() { pool->push([]{}); });
+    t1.join();
+    t2.join();
+  }
+}
+
 
 }
