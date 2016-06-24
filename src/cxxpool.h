@@ -40,7 +40,7 @@ Result wait_for(Iterator first, Iterator last,
                 const std::chrono::duration<Rep, Period>& timeout_duration,
                 Result result) {
   for (; first != last; ++first)
-    result.emplace_back(first->wait_for(timeout_duration));
+    result.push_back(first->wait_for(timeout_duration));
   return result;
 }
 /**
@@ -66,7 +66,7 @@ Result wait_until(
      const std::chrono::time_point<Clock, Duration>& timeout_time,
      Result result) {
   for (; first != last; ++first)
-    result.emplace_back(first->wait_until(timeout_time));
+    result.push_back(first->wait_until(timeout_time));
   return result;
 }
 /**
@@ -116,7 +116,7 @@ template<typename Result, typename Iterator,
 inline
 Result get(Iterator first, Iterator last, Result result) {
   for (; first != last; ++first)
-    result.emplace_back(first->get());
+    result.push_back(first->get());
   return result;
 }
 /**
@@ -224,7 +224,10 @@ class thread_pool {
   thread_pool& operator=(const thread_pool&) = delete;
   thread_pool(thread_pool&&) = delete;
   thread_pool& operator=(thread_pool&&) = delete;
-
+  /**
+   * Adds new threads to the pool and launches them
+   */
+  void add_threads(int n_threads);
   /**
    * Returns the number of threads launched in the constructor
    */
@@ -299,7 +302,7 @@ class thread_pool_error : public std::runtime_error {
 
 inline
 thread_pool::thread_pool()
-: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
+: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{0},
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{}
 {
   init(0);
@@ -307,7 +310,7 @@ thread_pool::thread_pool()
 
 inline
 thread_pool::thread_pool(int n_threads)
-: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
+: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{0},
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{}
 {
   init(n_threads);
@@ -322,6 +325,12 @@ thread_pool::~thread_pool() {
   task_cond_var_.notify_all();
   for (auto& thread : threads_)
     thread.join();
+}
+
+inline
+void thread_pool::add_threads(int n_threads) {
+  for (int i=0; i < n_threads; ++i)
+    threads_.emplace_back(&thread_pool::worker, this);
 }
 
 inline
@@ -386,9 +395,7 @@ inline
 void thread_pool::init(int n_threads) {
   if (n_threads <= 0)
     n_threads = hardware_concurrency();
-  threads_ = std::vector<std::thread>(n_threads);
-  for (auto& thread : threads_)
-    thread = std::thread{&thread_pool::worker, this};
+  add_threads(n_threads);
 }
 
 inline

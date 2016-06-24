@@ -76,7 +76,7 @@ TEST(test_thread_pool_wait) {
 
 TEST(test_thread_pool_wait_with_many_tasks) {
   cxxpool::thread_pool pool{4};
-  for (int i=0; i<50; ++i) {
+  for (int i=0; i < 50; ++i) {
     pool.push([]{
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     });
@@ -314,14 +314,25 @@ TEST(test_wait_until) {
   ASSERT_EQUAL(1, a);
 }
 
-TEST(test_parallel_pushes) {
+TEST(test_thread_pool_parallel_pushes) {
   auto pool = std::make_shared<cxxpool::thread_pool>(4);
-  for (size_t i=0; i<1000; ++i) {
+  for (size_t i=0; i < 1000; ++i) {
     auto t1 = std::thread([&pool]() { pool->push([]{}); });
     auto t2 = std::thread([&pool]() { pool->push([]{}); });
     t1.join();
     t2.join();
   }
+}
+
+TEST(test_thread_pool_add_threads) {
+  cxxpool::thread_pool pool{4};
+  ASSERT_EQUAL(4, pool.n_threads());
+  pool.add_threads(-1);
+  ASSERT_EQUAL(4, pool.n_threads());
+  pool.add_threads(0);
+  ASSERT_EQUAL(4, pool.n_threads());
+  pool.add_threads(2);
+  ASSERT_EQUAL(6, pool.n_threads());
 }
 
 
