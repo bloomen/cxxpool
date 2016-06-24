@@ -1,3 +1,9 @@
+1.1.0
+
+* added new add_threads() method to the thread pool
+* fixed initilization of the task balance
+* use of push_back() in the wait/get functions
+
 1.0.1
 
 * fixed linking issue
