@@ -315,10 +315,10 @@ TEST(test_wait_until) {
 }
 
 TEST(test_thread_pool_parallel_pushes) {
-  auto pool = std::make_shared<cxxpool::thread_pool>(4);
+  cxxpool::thread_pool pool{4};
   for (size_t i=0; i < 1000; ++i) {
-    auto t1 = std::thread([&pool]() { pool->push([]{}); });
-    auto t2 = std::thread([&pool]() { pool->push([]{}); });
+    auto t1 = std::thread([&pool]() { pool.push([]{}); });
+    auto t2 = std::thread([&pool]() { pool.push([]{}); });
     t1.join();
     t2.join();
   }
@@ -333,6 +333,16 @@ TEST(test_thread_pool_add_threads) {
   ASSERT_EQUAL(4, pool.n_threads());
   pool.add_threads(2);
   ASSERT_EQUAL(6, pool.n_threads());
+}
+
+TEST(test_thread_pool_parallel_add_threads_and_n_threads) {
+  cxxpool::thread_pool pool{4};
+  for (size_t i=0; i < 1000; ++i) {
+    auto t1 = std::thread([&pool]() { pool.add_threads(2); });
+    auto t2 = std::thread([&pool]() { ASSERT_GREATER_EQUAL(pool.n_threads(), 4); });
+    t1.join();
+    t2.join();
+  }
 }
 
 
