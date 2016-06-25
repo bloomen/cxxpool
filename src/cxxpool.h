@@ -89,8 +89,9 @@ namespace detail {
 template<typename Iterator>
 struct future_info {
   typedef typename std::iterator_traits<Iterator>::value_type future_type;
-  typedef typename std::result_of<
-      decltype(&future_type::get)(future_type)>::type value_type;
+
+  typedef typename std::result_of<decltype(&future_type::get)(future_type)>::type value_type;
+
   static constexpr bool is_void = std::is_void<value_type>::value;
 };
 
@@ -289,6 +290,7 @@ class thread_pool {
   std::mutex task_mutex_;
   mutable std::condition_variable wait_cond_var_;
   mutable std::mutex wait_mutex_;
+  mutable std::mutex thread_mutex_;
 };
 
 
@@ -323,18 +325,26 @@ thread_pool::~thread_pool() {
     done_ = true;
   }
   task_cond_var_.notify_all();
+  std::lock_guard<std::mutex> thread_lock{thread_mutex_};
   for (auto& thread : threads_)
     thread.join();
 }
 
 inline
 void thread_pool::add_threads(int n_threads) {
+  {
+    std::lock_guard<std::mutex> task_lock{task_mutex_};
+    if (done_)
+      throw thread_pool_error{"add_threads called while pool is shutting down"};
+  }
+  std::lock_guard<std::mutex> thread_lock{thread_mutex_};
   for (int i=0; i < n_threads; ++i)
     threads_.emplace_back(&thread_pool::worker, this);
 }
 
 inline
 int thread_pool::n_threads() const {
+  std::lock_guard<std::mutex> thread_lock{thread_mutex_};
   return threads_.size();
 }
 
@@ -350,8 +360,7 @@ inline
 auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   -> std::future<decltype(functor(args...))> {
   if (priority < 0)
-    throw thread_pool_error{"priority smaller than zero: " +
-                            std::to_string(priority)};
+    throw thread_pool_error{"priority smaller than zero: " + std::to_string(priority)};
   typedef decltype(functor(args...)) result_type;
   auto pack_task = std::make_shared<std::packaged_task<result_type()>>(
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
