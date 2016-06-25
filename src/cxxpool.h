@@ -305,7 +305,8 @@ class thread_pool_error : public std::runtime_error {
 inline
 thread_pool::thread_pool()
 : done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{0},
-  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{}
+  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
+  thread_mutex_{}
 {
   init(0);
 }
@@ -313,7 +314,8 @@ thread_pool::thread_pool()
 inline
 thread_pool::thread_pool(int n_threads)
 : done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{0},
-  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{}
+  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
+  thread_mutex_{}
 {
   init(n_threads);
 }
