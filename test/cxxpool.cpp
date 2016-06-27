@@ -366,13 +366,13 @@ TEST(test_thread_pool_parallel_pushes) {
 
 TEST(test_thread_pool_add_threads) {
   cxxpool::thread_pool pool{4};
-  ASSERT_EQUAL(4, pool.n_threads());
+  ASSERT_EQUAL(4u, pool.n_threads());
   pool.add_threads(-1);
-  ASSERT_EQUAL(4, pool.n_threads());
+  ASSERT_EQUAL(4u, pool.n_threads());
   pool.add_threads(0);
-  ASSERT_EQUAL(4, pool.n_threads());
+  ASSERT_EQUAL(4u, pool.n_threads());
   pool.add_threads(2);
-  ASSERT_EQUAL(6, pool.n_threads());
+  ASSERT_EQUAL(6u, pool.n_threads());
 }
 
 TEST(test_thread_pool_parallel_add_threads_and_n_threads) {

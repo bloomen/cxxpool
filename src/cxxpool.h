@@ -167,11 +167,11 @@ class infinite_counter {
 
 class priority_task {
  public:
-  typedef std::uint64_t counter_elem_t;
+  typedef std::size_t counter_elem_t;
 
   priority_task();
 
-  priority_task(std::function<void()> callback, int priority,
+  priority_task(std::function<void()> callback, std::size_t priority,
                 detail::infinite_counter<counter_elem_t> order);
 
   bool operator<(const priority_task& other) const;
@@ -180,7 +180,7 @@ class priority_task {
 
  private:
   std::function<void()> callback_;
-  int priority_;
+  std::size_t priority_;
   detail::infinite_counter<counter_elem_t> order_;
 };
 
@@ -213,9 +213,8 @@ class thread_pool {
    * Constructor. Launches the desired number of threads
    * @param n_threads The number of threads to launch. Passing 0 is equivalent
    *  to calling the no-argument constructor
-   * @throws cxxpool::thread_pool_error if n_threads < 0
    */
-  explicit thread_pool(int n_threads);
+  explicit thread_pool(std::size_t n_threads);
   /**
    * Destructor. Joins all threads launched. Waits for all running tasks
    * to complete
@@ -229,11 +228,11 @@ class thread_pool {
   /**
    * Adds new threads to the pool and launches them
    */
-  void add_threads(int n_threads);
+  void add_threads(std::size_t n_threads);
   /**
-   * Returns the number of threads launched in the constructor
+   * Returns the number of threads launched
    */
-  int n_threads() const;
+  std::size_t n_threads() const;
   /**
    * Pushes a new task into the thread pool. The task will have a priority of 0
    * @param functor The functor to call
@@ -252,12 +251,12 @@ class thread_pool {
    * @throws cxxpool::thread_pool_error if priority < 0
    */
   template<typename Functor, typename... Args>
-  auto push(int priority, Functor&& functor, Args&&... args)
+  auto push(std::size_t priority, Functor&& functor, Args&&... args)
     -> std::future<decltype(functor(args...))>;
   /**
    * Returns the current number of unprocessed tasks
    */
-  std::uint64_t n_tasks() const;
+  std::size_t n_tasks() const;
   /**
    * Waits until all tasks finished
    */
@@ -279,9 +278,9 @@ class thread_pool {
 
  private:
 
-  void init(int n_threads);
+  void init(std::size_t n_threads);
 
-  int hardware_concurrency() const;
+  std::size_t hardware_concurrency() const;
 
   void worker();
 
@@ -290,7 +289,7 @@ class thread_pool {
   std::priority_queue<detail::priority_task> tasks_;
   detail::infinite_counter<typename detail::priority_task::counter_elem_t>
     task_counter_;
-  std::atomic<std::uint64_t> task_balance_;
+  std::atomic<std::size_t> task_balance_;
   std::condition_variable task_cond_var_;
   std::mutex task_mutex_;
   mutable std::condition_variable wait_cond_var_;
@@ -317,7 +316,7 @@ thread_pool::thread_pool()
 }
 
 inline
-thread_pool::thread_pool(int n_threads)
+thread_pool::thread_pool(std::size_t n_threads)
 : done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{0},
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
   thread_mutex_{}
@@ -338,19 +337,19 @@ thread_pool::~thread_pool() {
 }
 
 inline
-void thread_pool::add_threads(int n_threads) {
+void thread_pool::add_threads(std::size_t n_threads) {
   {
     std::lock_guard<std::mutex> task_lock{task_mutex_};
     if (done_)
       throw thread_pool_error{"add_threads called while pool is shutting down"};
   }
   std::lock_guard<std::mutex> thread_lock{thread_mutex_};
-  for (int i=0; i < n_threads; ++i)
+  for (std::size_t i=0; i < n_threads; ++i)
     threads_.emplace_back(&thread_pool::worker, this);
 }
 
 inline
-int thread_pool::n_threads() const {
+std::size_t thread_pool::n_threads() const {
   std::lock_guard<std::mutex> thread_lock{thread_mutex_};
   return threads_.size();
 }
@@ -364,10 +363,8 @@ auto thread_pool::push(Functor&& functor, Args&&... args)
 
 template<typename Functor, typename... Args>
 inline
-auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
+auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
   -> std::future<decltype(functor(args...))> {
-  if (priority < 0)
-    throw thread_pool_error{"priority smaller than zero: " + std::to_string(priority)};
   typedef decltype(functor(args...)) result_type;
   auto pack_task = std::make_shared<std::packaged_task<result_type()>>(
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
@@ -384,7 +381,7 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
 }
 
 inline
-std::uint64_t thread_pool::n_tasks() const {
+std::size_t thread_pool::n_tasks() const {
   return task_balance_.load();
 }
 
@@ -413,19 +410,19 @@ bool thread_pool::wait_until(
 }
 
 inline
-void thread_pool::init(int n_threads) {
-  if (n_threads <= 0)
+void thread_pool::init(std::size_t n_threads) {
+  if (n_threads == 0)
     n_threads = hardware_concurrency();
   add_threads(n_threads);
 }
 
 inline
-int thread_pool::hardware_concurrency() const {
+std::size_t thread_pool::hardware_concurrency() const {
   const auto n_threads = std::thread::hardware_concurrency();
   if (n_threads == 0)
     throw thread_pool_error{
     "got zero from std::thread::hardware_concurrency()"};
-  return static_cast<int>(n_threads);
+  return n_threads;
 }
 
 inline
@@ -456,7 +453,7 @@ priority_task::priority_task()
 {}
 
 inline
-priority_task::priority_task(std::function<void()> callback, int priority,
+priority_task::priority_task(std::function<void()> callback, std::size_t priority,
                              detail::infinite_counter<counter_elem_t> order)
 : callback_{std::move(callback)}, priority_(priority),
   order_{std::move(order)}
