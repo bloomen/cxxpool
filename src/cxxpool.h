@@ -192,7 +192,8 @@ class priority_task {
  *
  * Constructing the thread pool launches the worker threads while
  * destructing it joins them. The threads will be alive for as long as the
- * thread pool is not destructed.
+ * thread pool is not destructed. One may call add_threads() to add more
+ * threads to the thread pool.
  *
  * Tasks can be pushed into the pool with and w/o providing a priority >= 0.
  * Not providing a priority is equivalent to providing a priority of 0.
@@ -209,15 +210,15 @@ class thread_pool {
    */
   thread_pool();
   /**
-   * Constructor
+   * Constructor. Launches the desired number of threads
    * @param n_threads The number of threads to launch. Passing 0 is equivalent
    *  to calling the no-argument constructor
    * @throws cxxpool::thread_pool_error if n_threads < 0
    */
   explicit thread_pool(int n_threads);
   /**
-   * Destructor. Joins all threads launched in the constructor. Waits for all
-   * running tasks to complete
+   * Destructor. Joins all threads launched. Waits for all running tasks
+   * to complete
    */
   ~thread_pool();
 
@@ -253,6 +254,10 @@ class thread_pool {
   template<typename Functor, typename... Args>
   auto push(int priority, Functor&& functor, Args&&... args)
     -> std::future<decltype(functor(args...))>;
+  /**
+   * Returns the current number of unprocessed tasks
+   */
+  std::uint64_t n_tasks() const;
   /**
    * Waits until all tasks finished
    */
@@ -376,6 +381,11 @@ auto thread_pool::push(int priority, Functor&& functor, Args&&... args)
   }
   task_cond_var_.notify_one();
   return future;
+}
+
+inline
+std::uint64_t thread_pool::n_tasks() const {
+  return task_balance_.load();
 }
 
 inline

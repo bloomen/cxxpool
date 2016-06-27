@@ -6,6 +6,46 @@
 COLLECTION(test_cxxpool) {
 
 
+class condvar {
+ public:
+
+  condvar()
+  : flag_{false}, cond_var_{}, mutex_{}
+  {}
+
+  void notify_one() {
+    make_flag_true();
+    cond_var_.notify_one();
+  }
+
+  void notify_all() {
+    make_flag_true();
+    cond_var_.notify_all();
+  }
+
+  void wait() {
+    std::unique_lock<std::mutex> lock{mutex_};
+    cond_var_.wait(lock, [this]() { return flag_; });
+  }
+
+  void reset() {
+    std::lock_guard<std::mutex> lock{mutex_};
+    flag_ = false;
+  }
+
+ private:
+
+  void make_flag_true() {
+    std::lock_guard<std::mutex> lock{mutex_};
+    flag_ = true;
+  }
+
+  bool flag_;
+  std::condition_variable cond_var_;
+  std::mutex mutex_;
+};
+
+
 TEST(test_thread_pool_noarg_construction) {
   try {
     const cxxpool::thread_pool pool;
@@ -343,6 +383,17 @@ TEST(test_thread_pool_parallel_add_threads_and_n_threads) {
     t1.join();
     t2.join();
   }
+}
+
+TEST(test_thread_pool_n_tasks) {
+  cxxpool::thread_pool pool{4};
+  ASSERT_EQUAL(0u, pool.n_tasks());
+  condvar cv;
+  auto lambda = [&cv]{ cv.wait(); };
+  pool.push(lambda);
+  pool.push(lambda);
+  ASSERT_EQUAL(2u, pool.n_tasks());
+  cv.notify_all();
 }
 
 
