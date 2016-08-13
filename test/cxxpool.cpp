@@ -367,6 +367,8 @@ TEST(test_thread_pool_parallel_pushes) {
 TEST(test_thread_pool_add_threads) {
   cxxpool::thread_pool pool{4};
   ASSERT_EQUAL(4u, pool.n_threads());
+  pool.add_threads(-1);
+  ASSERT_EQUAL(4u, pool.n_threads());
   pool.add_threads(0);
   ASSERT_EQUAL(4u, pool.n_threads());
   pool.add_threads(2);
@@ -392,13 +394,6 @@ TEST(test_thread_pool_n_tasks) {
   pool.push(lambda);
   ASSERT_EQUAL(2u, pool.n_tasks());
   cv.notify_all();
-}
-
-TEST(test_thread_pool_remove_threads) {
-  cxxpool::thread_pool pool{4};
-  pool.remove_threads(1);
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  ASSERT_EQUAL(3u, pool.n_threads());
 }
 
 
