@@ -289,7 +289,7 @@ class thread_pool {
   std::priority_queue<detail::priority_task> tasks_;
   detail::infinite_counter<typename detail::priority_task::counter_elem_t>
     task_counter_;
-  std::atomic<std::size_t> task_balance_;
+  std::size_t task_balance_;
   std::condition_variable task_cond_var_;
   mutable std::mutex task_mutex_;
   mutable std::condition_variable wait_cond_var_;
@@ -308,7 +308,7 @@ class thread_pool_error : public std::runtime_error {
 
 inline
 thread_pool::thread_pool()
-: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{0},
+: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
   thread_mutex_{}
 {
@@ -317,7 +317,7 @@ thread_pool::thread_pool()
 
 inline
 thread_pool::thread_pool(std::size_t n_threads)
-: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{0},
+: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
   thread_mutex_{}
 {
@@ -380,7 +380,11 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
       std::lock_guard<std::mutex> lock{task_mutex_};
       if (done_)
         throw thread_pool_error{"push called while pool is shutting down"};
-      ++task_counter_; ++task_balance_;
+      ++task_counter_;
+      {
+        std::unique_lock<std::mutex> lock{wait_mutex_};
+        ++task_balance_;
+      }
       tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
   }
   task_cond_var_.notify_one();
@@ -389,7 +393,8 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
 
 inline
 std::size_t thread_pool::n_tasks() const {
-  return task_balance_.load();
+  std::unique_lock<std::mutex> lock{wait_mutex_};
+  return task_balance_;
 }
 
 inline
@@ -445,7 +450,10 @@ void thread_pool::worker() {
       tasks_.pop();
     }
     task.callback()();
-    --task_balance_;
+    {
+      std::unique_lock<std::mutex> lock{wait_mutex_};
+      --task_balance_;
+    }
     wait_cond_var_.notify_all();
   }
 }
