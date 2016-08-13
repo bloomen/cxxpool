@@ -291,7 +291,7 @@ class thread_pool {
     task_counter_;
   std::atomic<std::size_t> task_balance_;
   std::condition_variable task_cond_var_;
-  std::mutex task_mutex_;
+  mutable std::mutex task_mutex_;
   mutable std::condition_variable wait_cond_var_;
   mutable std::mutex wait_mutex_;
   mutable std::mutex thread_mutex_;
@@ -338,18 +338,25 @@ thread_pool::~thread_pool() {
 
 inline
 void thread_pool::add_threads(std::size_t n_threads) {
-  {
-    std::lock_guard<std::mutex> task_lock{task_mutex_};
-    if (done_)
-      throw thread_pool_error{"add_threads called while pool is shutting down"};
+  if (n_threads > 0) {
+      {
+        std::lock_guard<std::mutex> task_lock{task_mutex_};
+        if (done_)
+          throw thread_pool_error{"add_threads called while pool is shutting down"};
+      }
+      std::lock_guard<std::mutex> thread_lock{thread_mutex_};
+      for (std::size_t i=0; i < n_threads; ++i)
+        threads_.emplace_back(&thread_pool::worker, this);
   }
-  std::lock_guard<std::mutex> thread_lock{thread_mutex_};
-  for (std::size_t i=0; i < n_threads; ++i)
-    threads_.emplace_back(&thread_pool::worker, this);
 }
 
 inline
 std::size_t thread_pool::n_threads() const {
+  {
+    std::lock_guard<std::mutex> task_lock{task_mutex_};
+    if (done_)
+      throw thread_pool_error{"n_threads called while pool is shutting down"};
+  }
   std::lock_guard<std::mutex> thread_lock{thread_mutex_};
   return threads_.size();
 }
