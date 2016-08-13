@@ -382,7 +382,7 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
         throw thread_pool_error{"push called while pool is shutting down"};
       ++task_counter_;
       {
-        std::unique_lock<std::mutex> lock{wait_mutex_};
+        std::lock_guard<std::mutex> lock{wait_mutex_};
         ++task_balance_;
       }
       tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
@@ -393,7 +393,7 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
 
 inline
 std::size_t thread_pool::n_tasks() const {
-  std::unique_lock<std::mutex> lock{wait_mutex_};
+  std::lock_guard<std::mutex> lock{wait_mutex_};
   return task_balance_;
 }
 
@@ -451,7 +451,7 @@ void thread_pool::worker() {
     }
     task.callback()();
     {
-      std::unique_lock<std::mutex> lock{wait_mutex_};
+      std::lock_guard<std::mutex> lock{wait_mutex_};
       --task_balance_;
     }
     wait_cond_var_.notify_all();
