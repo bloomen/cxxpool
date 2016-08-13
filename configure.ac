@@ -1,4 +1,4 @@
-AC_INIT([cxxpool],[1.1.0],[chr.blume@gmail.com],[cxxpool],[https://github.com/bloomen/cxxpool])
+AC_INIT([cxxpool],[1.2.0],[chr.blume@gmail.com],[cxxpool],[https://github.com/bloomen/cxxpool])
 AC_CONFIG_SRCDIR([src/cxxpool.h])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])

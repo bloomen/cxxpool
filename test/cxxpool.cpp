@@ -367,8 +367,6 @@ TEST(test_thread_pool_parallel_pushes) {
 TEST(test_thread_pool_add_threads) {
   cxxpool::thread_pool pool{4};
   ASSERT_EQUAL(4u, pool.n_threads());
-  pool.add_threads(-1);
-  ASSERT_EQUAL(4u, pool.n_threads());
   pool.add_threads(0);
   ASSERT_EQUAL(4u, pool.n_threads());
   pool.add_threads(2);
