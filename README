@@ -12,11 +12,10 @@ OR
 Copy src/cxxpool.h to your project.
 
 
-cxxpool is written using C++11 and has no dependencies except for the 
-standard library. Supported compilers: g++ (>=4.6), clang++ (>=3.2)
+cxxpool is written using C++11 and only depends on the standard library.
 
-To build and run the tests the following libraries are required:
-- libunittest (http://libunittest.sourceforge.net)
+To build and run the tests libunittest (http://libunittest.sourceforge.net)
+is required.
 
 cxxpool is being developed by Christian Blume. Contact Christian at
 chr.blume@gmail.com for any questions or comments.
