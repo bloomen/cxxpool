@@ -1,6 +1,8 @@
 1.2.0
 
-* under development
+* changed the no-arg constructor to not launch any threads. In this case,
+  threads must be added and launched by calling add_threads()
+* fixed a race condition regarding waiting for tasks
 
 1.1.0
 
