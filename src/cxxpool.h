@@ -1,6 +1,6 @@
 /**
  * A portable, header-only thread pool for C++
- * @version 2.0.0 (under development)
+ * @version 1.2.0
  * @author Christian Blume (chr.blume@gmail.com)
  * @copyright 2015-2016 by Christian Blume
  * cxxpool is released under the MIT license:
@@ -8,6 +8,7 @@
  */
 #pragma once
 #include <thread>
+#include <mutex>
 #include <future>
 #include <stdexcept>
 #include <queue>
@@ -275,8 +276,6 @@ class thread_pool {
   bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const;
 
  private:
-
-  void init(std::size_t n_threads);
 
   void worker();
 
