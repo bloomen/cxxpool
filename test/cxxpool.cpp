@@ -232,9 +232,9 @@ void some_other_function() {}
 
 TEST(test_priority_task_with_different_priorities) {
   cxxpool::detail::infinite_counter<std::uint64_t> c;
-  cxxpool::detail::priority_task t1{some_function, 3, c};
+  cxxpool::detail::priority_task t1(some_function, 3, c);
   ++c;
-  cxxpool::detail::priority_task t2{some_function, 2, c};
+  cxxpool::detail::priority_task t2(some_function, 2, c);
   ASSERT_EQUAL(get_address(t1.callback()), get_address(t2.callback()));
   ASSERT_TRUE(t2 < t1);
   ASSERT_FALSE(t1 < t2);
@@ -242,9 +242,9 @@ TEST(test_priority_task_with_different_priorities) {
 
 TEST(test_priority_task_with_same_priorities) {
   cxxpool::detail::infinite_counter<std::uint64_t> c;
-  cxxpool::detail::priority_task t1{some_function, 2, c};
+  cxxpool::detail::priority_task t1(some_function, 2, c);
   ++c;
-  cxxpool::detail::priority_task t2{some_other_function, 2, c};
+  cxxpool::detail::priority_task t2(some_other_function, 2, c);
   ASSERT_NOT_EQUAL(get_address(t1.callback()), get_address(t2.callback()));
   ASSERT_TRUE(t2 < t1);
   ASSERT_FALSE(t1 < t2);
@@ -252,8 +252,8 @@ TEST(test_priority_task_with_same_priorities) {
 
 TEST(test_priority_task_with_same_priorities_and_same_order) {
   cxxpool::detail::infinite_counter<std::uint64_t> c;
-  cxxpool::detail::priority_task t1{some_function, 2, c};
-  cxxpool::detail::priority_task t2{some_function, 2, c};
+  cxxpool::detail::priority_task t1(some_function, 2, c);
+  cxxpool::detail::priority_task t2(some_function, 2, c);
   ASSERT_FALSE(t2 < t1);
   ASSERT_FALSE(t1 < t2);
 }
