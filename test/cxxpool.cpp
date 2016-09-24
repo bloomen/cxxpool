@@ -47,12 +47,8 @@ class condvar {
 
 
 TEST(test_thread_pool_noarg_construction) {
-  try {
-    const cxxpool::thread_pool pool;
-    ASSERT_GREATER(pool.n_threads(), 0);
-  } catch (const cxxpool::thread_pool_error&) {
-    // may get here on, e.g., VMs
-  }
+  const cxxpool::thread_pool pool;
+  ASSERT_EQUAL(pool.n_threads(), 0);
 }
 
 TEST(test_thread_pool_construct_with_thread_number) {
@@ -394,5 +390,14 @@ TEST(test_thread_pool_n_tasks) {
   cv.notify_all();
 }
 
+TEST(test_push_first_then_add_threads) {
+  cxxpool::thread_pool pool;
+  auto future1 = pool.push([]{ return 1; });
+  auto future2 = pool.push([](double value) { return value; }, 2.);
+  ASSERT_FALSE(pool.wait_for(std::chrono::milliseconds(100)));
+  pool.add_threads(4);
+  ASSERT_EQUAL(1, future1.get());
+  ASSERT_EQUAL(2., future2.get());
+}
 
 }

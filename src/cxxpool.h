@@ -204,9 +204,7 @@ class priority_task {
 class thread_pool {
  public:
   /**
-   * Constructor. The number of threads to launch is determined by calling
-   * std::thread::hardware_concurrency()
-   * @throws cxxpool::thread_pool_error if hardware concurrency is unavailable
+   * Constructor. No threads are launched
    */
   thread_pool();
   /**
@@ -280,8 +278,6 @@ class thread_pool {
 
   void init(std::size_t n_threads);
 
-  std::size_t hardware_concurrency() const;
-
   void worker();
 
   bool done_;
@@ -311,9 +307,7 @@ thread_pool::thread_pool()
 : done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
   thread_mutex_{}
-{
-  init(0);
-}
+{}
 
 inline
 thread_pool::thread_pool(std::size_t n_threads)
@@ -321,7 +315,7 @@ thread_pool::thread_pool(std::size_t n_threads)
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
   thread_mutex_{}
 {
-  init(n_threads);
+  add_threads(n_threads);
 }
 
 inline
@@ -419,22 +413,6 @@ bool thread_pool::wait_until(
   std::unique_lock<std::mutex> lock{wait_mutex_};
   return wait_cond_var_.wait_until(lock, timeout_time,
                                    [this]{ return task_balance_ == 0; });
-}
-
-inline
-void thread_pool::init(std::size_t n_threads) {
-  if (n_threads == 0)
-    n_threads = hardware_concurrency();
-  add_threads(n_threads);
-}
-
-inline
-std::size_t thread_pool::hardware_concurrency() const {
-  const auto n_threads = std::thread::hardware_concurrency();
-  if (n_threads == 0)
-    throw thread_pool_error{
-    "got zero from std::thread::hardware_concurrency()"};
-  return n_threads;
 }
 
 inline
