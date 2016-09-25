@@ -18,7 +18,6 @@
 #include <vector>
 #include <chrono>
 #include <cstddef>
-#include <limits>
 
 
 namespace cxxpool {
@@ -254,9 +253,21 @@ class thread_pool {
   auto push(std::size_t priority, Functor&& functor, Args&&... args)
     -> std::future<decltype(functor(args...))>;
   /**
-   * Returns the current number of unprocessed tasks
+   * Returns the current number of queued tasks
    */
   std::size_t n_tasks() const;
+  /**
+   * Clears all queued tasks. Not affecting currently running tasks
+   */
+  void clear();
+  /**
+   * Pauses the processing of tasks. Not affecting currently running tasks
+   */
+  void pause();
+  /**
+   * Resumes the processing of tasks
+   */
+  void resume();
   /**
    * Waits until all tasks finished
    */
@@ -275,20 +286,6 @@ class thread_pool {
    */
   template<typename Clock, typename Duration>
   bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const;
-  /**
-   * Pauses the processing of tasks. Note that currently running tasks
-   * will not be interrupted
-   */
-  void pause();
-  /**
-   * Resumes the processing of tasks
-   */
-  void resume();
-  /**
-   * Clears all unprocessed tasks. Note that currently running tasks
-   * will not be interrupted
-   */
-  void clear();
 
  private:
 
@@ -336,6 +333,7 @@ thread_pool::~thread_pool() {
   {
     std::lock_guard<std::mutex> lock{task_mutex_};
     done_ = true;
+    paused_ = false;
   }
   task_cond_var_.notify_all();
   std::lock_guard<std::mutex> thread_lock{thread_mutex_};
@@ -401,8 +399,30 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
 
 inline
 std::size_t thread_pool::n_tasks() const {
-  std::lock_guard<std::mutex> lock{wait_mutex_};
-  return task_balance_;
+  std::lock_guard<std::mutex> lock{task_mutex_};
+  return tasks_.size();
+}
+
+inline
+void thread_pool::clear() {
+  std::lock_guard<std::mutex> lock{task_mutex_};
+  decltype(tasks_) empty;
+  tasks_.swap(empty);
+}
+
+inline
+void thread_pool::pause() {
+  std::lock_guard<std::mutex> lock{task_mutex_};
+  paused_ = true;
+}
+
+inline
+void thread_pool::resume() {
+  {
+    std::lock_guard<std::mutex> lock{task_mutex_};
+    paused_ = false;
+  }
+  task_cond_var_.notify_all();
 }
 
 inline
@@ -427,31 +447,6 @@ bool thread_pool::wait_until(
   std::unique_lock<std::mutex> lock{wait_mutex_};
   return wait_cond_var_.wait_until(lock, timeout_time,
                                    [this]{ return task_balance_ == 0; });
-}
-
-inline
-void thread_pool::pause() {
-  std::lock_guard<std::mutex> lock{task_mutex_};
-  if (done_)
-    throw thread_pool_error{"pause called while pool is shutting down"};
-  paused_ = true;
-}
-
-inline
-void thread_pool::resume() {
-  std::lock_guard<std::mutex> lock{task_mutex_};
-  if (done_)
-    throw thread_pool_error{"resume called while pool is shutting down"};
-  paused_ = false;
-}
-
-inline
-void thread_pool::clear() {
-  std::lock_guard<std::mutex> lock{task_mutex_};
-  if (done_)
-    throw thread_pool_error{"clear called while pool is shutting down"};
-  decltype(tasks_) empty;
-  tasks_.swap(empty);
 }
 
 inline

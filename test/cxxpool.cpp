@@ -380,14 +380,11 @@ TEST(test_thread_pool_parallel_add_threads_and_n_threads) {
 }
 
 TEST(test_thread_pool_n_tasks) {
-  cxxpool::thread_pool pool{4};
+  cxxpool::thread_pool pool;
   ASSERT_EQUAL(0u, pool.n_tasks());
-  condvar cv;
-  auto lambda = [&cv]{ cv.wait(); };
-  pool.push(lambda);
-  pool.push(lambda);
+  pool.push([]{ return 1; });
+  pool.push([]{ return 2.; });
   ASSERT_EQUAL(2u, pool.n_tasks());
-  cv.notify_all();
 }
 
 TEST(test_push_first_then_add_threads) {
@@ -398,6 +395,26 @@ TEST(test_push_first_then_add_threads) {
   pool.add_threads(4);
   ASSERT_EQUAL(1, future1.get());
   ASSERT_EQUAL(2., future2.get());
+}
+
+TEST(test_pause_and_resume) {
+  cxxpool::thread_pool pool;
+  auto future1 = pool.push([]{ return 1; });
+  auto future2 = pool.push([]{ return 2.; });
+  pool.pause();
+  pool.add_threads(4);
+  ASSERT_FALSE(pool.wait_for(std::chrono::milliseconds(100)));
+  pool.resume();
+  ASSERT_EQUAL(1, future1.get());
+  ASSERT_EQUAL(2., future2.get());
+}
+
+TEST(test_clear) {
+  cxxpool::thread_pool pool;
+  pool.push([]{ return 1; });
+  pool.push([]{ return 2.; });
+  pool.clear();
+  ASSERT_EQUAL(0u, pool.n_tasks());
 }
 
 
