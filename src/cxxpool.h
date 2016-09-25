@@ -1,6 +1,6 @@
 /**
  * A portable, header-only thread pool for C++
- * @version 1.2.0
+ * @version 1.3.0 (under development)
  * @author Christian Blume (chr.blume@gmail.com)
  * @copyright 2015-2016 by Christian Blume
  * cxxpool is released under the MIT license:
@@ -274,6 +274,15 @@ class thread_pool {
    */
   template<typename Clock, typename Duration>
   bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const;
+  /**
+   * Pauses the processing of tasks. Note that currently running tasks
+   * will not be interrupted
+   */
+  void pause();
+  /**
+   * Resumes the processing of tasks
+   */
+  void resume();
 
  private:
 
@@ -290,6 +299,7 @@ class thread_pool {
   mutable std::condition_variable wait_cond_var_;
   mutable std::mutex wait_mutex_;
   mutable std::mutex thread_mutex_;
+  bool paused_;
 };
 
 
@@ -305,14 +315,12 @@ inline
 thread_pool::thread_pool()
 : done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
   task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
-  thread_mutex_{}
+  thread_mutex_{}, paused_{false}
 {}
 
 inline
 thread_pool::thread_pool(std::size_t n_threads)
-: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
-  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
-  thread_mutex_{}
+: thread_pool{}
 {
   add_threads(n_threads);
 }
@@ -415,12 +423,26 @@ bool thread_pool::wait_until(
 }
 
 inline
+void thread_pool::pause() {
+  std::unique_lock<std::mutex> lock{task_mutex_};
+  paused_ = true;
+}
+
+inline
+void thread_pool::resume() {
+  std::unique_lock<std::mutex> lock{task_mutex_};
+  paused_ = false;
+}
+
+inline
 void thread_pool::worker() {
   for (;;) {
     detail::priority_task task;
     {
       std::unique_lock<std::mutex> lock{task_mutex_};
-      task_cond_var_.wait(lock, [this]{ return done_ || !tasks_.empty(); });
+      task_cond_var_.wait(lock, [this]{
+        return !paused_ && (done_ || !tasks_.empty());
+      });
       if (done_ && tasks_.empty())
           break;
       task = tasks_.top();
