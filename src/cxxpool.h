@@ -18,6 +18,7 @@
 #include <vector>
 #include <chrono>
 #include <cstddef>
+#include <limits>
 
 
 namespace cxxpool {
@@ -283,12 +284,18 @@ class thread_pool {
    * Resumes the processing of tasks
    */
   void resume();
+  /**
+   * Clears all unprocessed tasks. Note that currently running tasks
+   * will not be interrupted
+   */
+  void clear();
 
  private:
 
   void worker();
 
   bool done_;
+  bool paused_;
   std::vector<std::thread> threads_;
   std::priority_queue<detail::priority_task> tasks_;
   detail::infinite_counter<typename detail::priority_task::counter_elem_t>
@@ -299,7 +306,6 @@ class thread_pool {
   mutable std::condition_variable wait_cond_var_;
   mutable std::mutex wait_mutex_;
   mutable std::mutex thread_mutex_;
-  bool paused_;
 };
 
 
@@ -313,9 +319,9 @@ class thread_pool_error : public std::runtime_error {
 
 inline
 thread_pool::thread_pool()
-: done_{false}, threads_{}, tasks_{}, task_counter_{}, task_balance_{},
-  task_cond_var_{}, task_mutex_{}, wait_cond_var_{}, wait_mutex_{},
-  thread_mutex_{}, paused_{false}
+: done_{false}, paused_{false}, threads_{}, tasks_{}, task_counter_{},
+  task_balance_{}, task_cond_var_{}, task_mutex_{}, wait_cond_var_{},
+  wait_mutex_{}, thread_mutex_{}
 {}
 
 inline
@@ -346,7 +352,8 @@ void thread_pool::add_threads(std::size_t n_threads) {
           throw thread_pool_error{"add_threads called while pool is shutting down"};
       }
       std::lock_guard<std::mutex> thread_lock{thread_mutex_};
-      for (std::size_t i=0; i < n_threads; ++i)
+      const auto n_target = threads_.size() + n_threads;
+      while (threads_.size() < n_target)
         threads_.emplace_back(&thread_pool::worker, this);
   }
 }
@@ -424,14 +431,27 @@ bool thread_pool::wait_until(
 
 inline
 void thread_pool::pause() {
-  std::unique_lock<std::mutex> lock{task_mutex_};
+  std::lock_guard<std::mutex> lock{task_mutex_};
+  if (done_)
+    throw thread_pool_error{"pause called while pool is shutting down"};
   paused_ = true;
 }
 
 inline
 void thread_pool::resume() {
-  std::unique_lock<std::mutex> lock{task_mutex_};
+  std::lock_guard<std::mutex> lock{task_mutex_};
+  if (done_)
+    throw thread_pool_error{"resume called while pool is shutting down"};
   paused_ = false;
+}
+
+inline
+void thread_pool::clear() {
+  std::lock_guard<std::mutex> lock{task_mutex_};
+  if (done_)
+    throw thread_pool_error{"clear called while pool is shutting down"};
+  decltype(tasks_) empty;
+  tasks_.swap(empty);
 }
 
 inline
