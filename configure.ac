@@ -1,4 +1,4 @@
-AC_INIT([cxxpool],[1.2.0],[chr.blume@gmail.com],[cxxpool],[https://github.com/bloomen/cxxpool])
+AC_INIT([cxxpool],[1.3.0],[chr.blume@gmail.com],[cxxpool],[https://github.com/bloomen/cxxpool])
 AC_CONFIG_SRCDIR([src/cxxpool.h])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -31,7 +31,7 @@ AC_MSG_RESULT([$debugit])
 if test x"$debugit" = x"yes"; then
     AM_CXXFLAGS="$AM_CXXFLAGS -g -O0 -Wall -Wextra -Weffc++ -pedantic"
 else
-    AM_CXXFLAGS="$AM_CXXFLAGS -O2"
+    AM_CXXFLAGS="$AM_CXXFLAGS -O2 -Wall -Wextra -Weffc++ -pedantic"
 fi
 
 # distribute additional compiler and linker flags among Makefiles
