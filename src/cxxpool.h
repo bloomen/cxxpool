@@ -294,8 +294,8 @@ class thread_pool {
   bool paused_;
   std::vector<std::thread> threads_;
   std::priority_queue<detail::priority_task> tasks_;
-  detail::infinite_counter<typename detail::priority_task::counter_elem_t>
-    task_counter_;
+  detail::infinite_counter<
+    typename detail::priority_task::counter_elem_t> task_counter_;
   std::size_t task_balance_;
   std::condition_variable task_cond_var_;
   mutable std::mutex task_mutex_;
