@@ -247,7 +247,6 @@ class thread_pool {
    * @param functor The functor to call
    * @param args The arguments to pass to the functor when calling it
    * @return The future associated to the underlying task
-   * @throws cxxpool::thread_pool_error if priority < 0
    */
   template<typename Functor, typename... Args>
   auto push(std::size_t priority, Functor&& functor, Args&&... args)
