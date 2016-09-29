@@ -1,6 +1,7 @@
 .cproject
 .project
 .settings
+.dirstamp
 *.o
 *.obj
 *.exe
