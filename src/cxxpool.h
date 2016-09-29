@@ -1,6 +1,6 @@
 /**
  * A portable, header-only thread pool for C++
- * @version 1.3.0 (under development)
+ * @version 1.3.0
  * @author Christian Blume (chr.blume@gmail.com)
  * @copyright 2015-2016 by Christian Blume
  * cxxpool is released under the MIT license:
@@ -382,12 +382,12 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
   auto future = pack_task->get_future();
   {
-      std::lock_guard<std::mutex> lock{task_mutex_};
+      std::lock_guard<std::mutex> task_lock{task_mutex_};
       if (done_)
         throw thread_pool_error{"push called while pool is shutting down"};
       ++task_counter_;
       {
-        std::lock_guard<std::mutex> lock{wait_mutex_};
+        std::lock_guard<std::mutex> wait_lock{wait_mutex_};
         ++task_balance_;
       }
       tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
@@ -453,8 +453,8 @@ void thread_pool::worker() {
   for (;;) {
     detail::priority_task task;
     {
-      std::unique_lock<std::mutex> lock{task_mutex_};
-      task_cond_var_.wait(lock, [this]{
+      std::unique_lock<std::mutex> task_lock{task_mutex_};
+      task_cond_var_.wait(task_lock, [this]{
         return !paused_ && (done_ || !tasks_.empty());
       });
       if (done_ && tasks_.empty())
@@ -464,7 +464,7 @@ void thread_pool::worker() {
     }
     task.callback()();
     {
-      std::lock_guard<std::mutex> lock{wait_mutex_};
+      std::lock_guard<std::mutex> wait_lock{wait_mutex_};
       --task_balance_;
     }
     wait_cond_var_.notify_all();
