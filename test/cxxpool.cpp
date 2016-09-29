@@ -48,11 +48,11 @@ class condvar {
 
 TEST(test_thread_pool_noarg_construction) {
   const cxxpool::thread_pool pool;
-  ASSERT_EQUAL(pool.n_threads(), 0);
+  ASSERT_EQUAL(0u, pool.n_threads());
 }
 
 TEST(test_thread_pool_construct_with_thread_number) {
-  const int threads = 4;
+  const std::size_t threads = 4;
   const cxxpool::thread_pool pool{threads};
   ASSERT_EQUAL(threads, pool.n_threads());
 }
@@ -287,7 +287,7 @@ TEST(test_result_get_int) {
   futures.emplace_back(pool.push([]{ return 1; }));
   futures.emplace_back(pool.push([]{ return 2; }));
   const auto result = cxxpool::get(futures.begin(), futures.end());
-  ASSERT_EQUAL(2, result.size());
+  ASSERT_EQUAL(2u, result.size());
   ASSERT_EQUAL(1, result[0]);
   ASSERT_EQUAL(2, result[1]);
 }
@@ -298,7 +298,7 @@ TEST(test_result_get_int_list) {
   futures.emplace_back(pool.push([]{ return 1; }));
   futures.emplace_back(pool.push([]{ return 2; }));
   auto result = cxxpool::get(futures.begin(), futures.end(), std::list<int>{});
-  ASSERT_EQUAL(2, result.size());
+  ASSERT_EQUAL(2u, result.size());
   auto it = result.begin();
   ASSERT_EQUAL(1, *it);
   ++it;
@@ -373,7 +373,7 @@ TEST(test_thread_pool_parallel_add_threads_and_n_threads) {
   cxxpool::thread_pool pool{4};
   for (size_t i=0; i < 1000; ++i) {
     auto t1 = std::thread([&pool]() { pool.add_threads(2); });
-    auto t2 = std::thread([&pool]() { ASSERT_GREATER_EQUAL(pool.n_threads(), 4); });
+    auto t2 = std::thread([&pool]() { ASSERT_GREATER_EQUAL(pool.n_threads(), 4u); });
     t1.join();
     t2.join();
   }

@@ -1,8 +1,8 @@
 AC_INIT([cxxpool],[1.3.0],[chr.blume@gmail.com],[cxxpool],[https://github.com/bloomen/cxxpool])
 AC_CONFIG_SRCDIR([src/cxxpool.h])
-AC_CONFIG_HEADERS([src/config.h])
+AC_CONFIG_HEADERS([test/libunittest/config.hpp])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([1.9])
+AM_INIT_AUTOMAKE([subdir-objects])
 : ${CXXFLAGS=""}
 AC_PROG_CXX
 AC_LANG([C++])
@@ -19,6 +19,7 @@ ACX_PTHREAD
 LIBS="$PTHREAD_LIBS $LIBS"
 AM_CXXFLAGS="$AM_CXXFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
+AX_CXX_GCC_ABI_DEMANGLE
 
 # debug compilation support
 AC_MSG_CHECKING([whether to build with debug information])
