@@ -330,12 +330,12 @@ thread_pool::thread_pool(std::size_t n_threads)
 inline
 thread_pool::~thread_pool() {
   {
-    std::lock_guard<std::mutex> lock{task_mutex_};
+    std::lock_guard<std::mutex> task_lock(task_mutex_);
     done_ = true;
     paused_ = false;
   }
   task_cond_var_.notify_all();
-  std::lock_guard<std::mutex> thread_lock{thread_mutex_};
+  std::lock_guard<std::mutex> thread_lock(thread_mutex_);
   for (auto& thread : threads_)
     thread.join();
 }
@@ -344,11 +344,11 @@ inline
 void thread_pool::add_threads(std::size_t n_threads) {
   if (n_threads > 0) {
       {
-        std::lock_guard<std::mutex> task_lock{task_mutex_};
+        std::lock_guard<std::mutex> task_lock(task_mutex_);
         if (done_)
           throw thread_pool_error{"add_threads called while pool is shutting down"};
       }
-      std::lock_guard<std::mutex> thread_lock{thread_mutex_};
+      std::lock_guard<std::mutex> thread_lock(thread_mutex_);
       const auto n_target = threads_.size() + n_threads;
       while (threads_.size() < n_target)
         threads_.emplace_back(&thread_pool::worker, this);
@@ -358,11 +358,11 @@ void thread_pool::add_threads(std::size_t n_threads) {
 inline
 std::size_t thread_pool::n_threads() const {
   {
-    std::lock_guard<std::mutex> task_lock{task_mutex_};
+    std::lock_guard<std::mutex> task_lock(task_mutex_);
     if (done_)
       throw thread_pool_error{"n_threads called while pool is shutting down"};
   }
-  std::lock_guard<std::mutex> thread_lock{thread_mutex_};
+  std::lock_guard<std::mutex> thread_lock(thread_mutex_);
   return threads_.size();
 }
 
@@ -382,12 +382,12 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
   auto future = pack_task->get_future();
   {
-      std::lock_guard<std::mutex> task_lock{task_mutex_};
+      std::lock_guard<std::mutex> task_lock(task_mutex_);
       if (done_)
         throw thread_pool_error{"push called while pool is shutting down"};
       ++task_counter_;
       {
-        std::lock_guard<std::mutex> wait_lock{wait_mutex_};
+        std::lock_guard<std::mutex> wait_lock(wait_mutex_);
         ++task_balance_;
       }
       tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
@@ -398,27 +398,27 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
 
 inline
 std::size_t thread_pool::n_tasks() const {
-  std::lock_guard<std::mutex> lock{task_mutex_};
+  std::lock_guard<std::mutex> lock(task_mutex_);
   return tasks_.size();
 }
 
 inline
 void thread_pool::clear() {
-  std::lock_guard<std::mutex> lock{task_mutex_};
+  std::lock_guard<std::mutex> lock(task_mutex_);
   decltype(tasks_) empty;
   tasks_.swap(empty);
 }
 
 inline
 void thread_pool::pause() {
-  std::lock_guard<std::mutex> lock{task_mutex_};
+  std::lock_guard<std::mutex> lock(task_mutex_);
   paused_ = true;
 }
 
 inline
 void thread_pool::resume() {
   {
-    std::lock_guard<std::mutex> lock{task_mutex_};
+    std::lock_guard<std::mutex> lock(task_mutex_);
     paused_ = false;
   }
   task_cond_var_.notify_all();
@@ -426,7 +426,7 @@ void thread_pool::resume() {
 
 inline
 void thread_pool::wait() const {
-  std::unique_lock<std::mutex> lock{wait_mutex_};
+  std::unique_lock<std::mutex> lock(wait_mutex_);
   wait_cond_var_.wait(lock, [this]{ return task_balance_ == 0; });
 }
 
@@ -434,7 +434,7 @@ template<typename Rep, typename Period>
 inline
 bool thread_pool::wait_for(
     const std::chrono::duration<Rep, Period>& timeout_duration) const {
-  std::unique_lock<std::mutex> lock{wait_mutex_};
+  std::unique_lock<std::mutex> lock(wait_mutex_);
   return wait_cond_var_.wait_for(lock, timeout_duration,
                                  [this]{ return task_balance_ == 0; });
 }
@@ -443,7 +443,7 @@ template<typename Clock, typename Duration>
 inline
 bool thread_pool::wait_until(
     const std::chrono::time_point<Clock, Duration>& timeout_time) const {
-  std::unique_lock<std::mutex> lock{wait_mutex_};
+  std::unique_lock<std::mutex> lock(wait_mutex_);
   return wait_cond_var_.wait_until(lock, timeout_time,
                                    [this]{ return task_balance_ == 0; });
 }
@@ -453,7 +453,7 @@ void thread_pool::worker() {
   for (;;) {
     detail::priority_task task;
     {
-      std::unique_lock<std::mutex> task_lock{task_mutex_};
+      std::unique_lock<std::mutex> task_lock(task_mutex_);
       task_cond_var_.wait(task_lock, [this]{
         return !paused_ && (done_ || !tasks_.empty());
       });
@@ -464,7 +464,7 @@ void thread_pool::worker() {
     }
     task.callback()();
     {
-      std::lock_guard<std::mutex> wait_lock{wait_mutex_};
+      std::lock_guard<std::mutex> wait_lock(wait_mutex_);
       --task_balance_;
     }
     wait_cond_var_.notify_all();

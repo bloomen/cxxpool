@@ -231,7 +231,7 @@ void some_function() {}
 void some_other_function() {}
 
 TEST(test_priority_task_with_different_priorities) {
-  cxxpool::detail::infinite_counter<std::uint64_t> c;
+  cxxpool::detail::infinite_counter<cxxpool::detail::priority_task::counter_elem_t> c;
   cxxpool::detail::priority_task t1(some_function, 3, c);
   ++c;
   cxxpool::detail::priority_task t2(some_function, 2, c);
@@ -241,7 +241,7 @@ TEST(test_priority_task_with_different_priorities) {
 }
 
 TEST(test_priority_task_with_same_priorities) {
-  cxxpool::detail::infinite_counter<std::uint64_t> c;
+  cxxpool::detail::infinite_counter<cxxpool::detail::priority_task::counter_elem_t> c;
   cxxpool::detail::priority_task t1(some_function, 2, c);
   ++c;
   cxxpool::detail::priority_task t2(some_other_function, 2, c);
@@ -251,7 +251,7 @@ TEST(test_priority_task_with_same_priorities) {
 }
 
 TEST(test_priority_task_with_same_priorities_and_same_order) {
-  cxxpool::detail::infinite_counter<std::uint64_t> c;
+  cxxpool::detail::infinite_counter<cxxpool::detail::priority_task::counter_elem_t> c;
   cxxpool::detail::priority_task t1(some_function, 2, c);
   cxxpool::detail::priority_task t2(some_function, 2, c);
   ASSERT_FALSE(t2 < t1);
@@ -371,7 +371,7 @@ TEST(test_thread_pool_add_threads) {
 
 TEST(test_thread_pool_parallel_add_threads_and_n_threads) {
   cxxpool::thread_pool pool{4};
-  for (size_t i=0; i < 1000; ++i) {
+  for (size_t i=0; i < 20; ++i) {
     auto t1 = std::thread([&pool]() { pool.add_threads(2); });
     auto t2 = std::thread([&pool]() { ASSERT_GREATER_EQUAL(pool.n_threads(), 4u); });
     t1.join();
