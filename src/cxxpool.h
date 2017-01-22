@@ -1,6 +1,6 @@
 /**
  * A portable, header-only thread pool for C++
- * @version 1.3.0
+ * @version 1.4.0 (dev)
  * @author Christian Blume (chr.blume@gmail.com)
  * @copyright 2015-2016 by Christian Blume
  * cxxpool is released under the MIT license:
@@ -225,6 +225,11 @@ class thread_pool {
   thread_pool(thread_pool&&) = delete;
   thread_pool& operator=(thread_pool&&) = delete;
   /**
+   * Sets the thread prioritizer to be used when launching new threads.
+   * By default, threads will be launched with the default OS priority
+   */
+  void set_thread_prioritizer(std::function<void(std::thread&)> prioritizer);
+  /**
    * Adds new threads to the pool and launches them
    */
   void add_threads(std::size_t n_threads);
@@ -302,6 +307,7 @@ class thread_pool {
   mutable std::condition_variable wait_cond_var_;
   mutable std::mutex wait_mutex_;
   mutable std::mutex thread_mutex_;
+  std::function<void(std::thread&)> thread_prioritizer_;
 };
 
 
@@ -317,7 +323,7 @@ inline
 thread_pool::thread_pool()
 : done_{false}, paused_{false}, threads_{}, tasks_{}, task_counter_{},
   task_balance_{}, task_cond_var_{}, task_mutex_{}, wait_cond_var_{},
-  wait_mutex_{}, thread_mutex_{}
+  wait_mutex_{}, thread_mutex_{}, thread_prioritizer_{[](std::thread&) {}}
 {}
 
 inline
@@ -341,17 +347,24 @@ thread_pool::~thread_pool() {
 }
 
 inline
+void thread_pool::set_thread_prioritizer(std::function<void(std::thread&)> prioritizer) {
+  thread_prioritizer_ = std::move(prioritizer);
+}
+
+inline
 void thread_pool::add_threads(std::size_t n_threads) {
   if (n_threads > 0) {
-      {
-        std::lock_guard<std::mutex> task_lock(task_mutex_);
-        if (done_)
-          throw thread_pool_error{"add_threads called while pool is shutting down"};
-      }
-      std::lock_guard<std::mutex> thread_lock(thread_mutex_);
-      const auto n_target = threads_.size() + n_threads;
-      while (threads_.size() < n_target)
-        threads_.emplace_back(&thread_pool::worker, this);
+    {
+      std::lock_guard<std::mutex> task_lock(task_mutex_);
+      if (done_)
+        throw thread_pool_error{"add_threads called while pool is shutting down"};
+    }
+    std::lock_guard<std::mutex> thread_lock(thread_mutex_);
+    const auto n_target = threads_.size() + n_threads;
+    while (threads_.size() < n_target) {
+      threads_.emplace_back(&thread_pool::worker, this);
+      thread_prioritizer_(threads_.back());
+    }
   }
 }
 
@@ -382,15 +395,15 @@ auto thread_pool::push(std::size_t priority, Functor&& functor, Args&&... args)
     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
   auto future = pack_task->get_future();
   {
-      std::lock_guard<std::mutex> task_lock(task_mutex_);
-      if (done_)
-        throw thread_pool_error{"push called while pool is shutting down"};
-      ++task_counter_;
-      {
-        std::lock_guard<std::mutex> wait_lock(wait_mutex_);
-        ++task_balance_;
-      }
-      tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
+    std::lock_guard<std::mutex> task_lock(task_mutex_);
+    if (done_)
+      throw thread_pool_error{"push called while pool is shutting down"};
+    ++task_counter_;
+    {
+      std::lock_guard<std::mutex> wait_lock(wait_mutex_);
+      ++task_balance_;
+    }
+    tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, task_counter_);
   }
   task_cond_var_.notify_one();
   return future;
