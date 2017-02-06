@@ -93,65 +93,6 @@ TEST(test_thread_pool_add_task_with_exception) {
   ASSERT_EQUAL(2., future2.get());
 }
 
-TEST(test_thread_pool_wait) {
-  cxxpool::thread_pool pool{4};
-  int a = 0;
-  int b = 0;
-  pool.push([&a]{
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    a = 1;
-  });
-  pool.push([&b]{
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    b = 2;
-  });
-  pool.wait();
-  ASSERT_EQUAL(1, a);
-  ASSERT_EQUAL(2, b);
-}
-
-TEST(test_thread_pool_wait_with_many_tasks) {
-  cxxpool::thread_pool pool{4};
-  for (int i=0; i < 50; ++i) {
-    pool.push([]{
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    });
-  }
-  pool.wait();
-}
-
-TEST(test_thread_pool_wait_no_tasks) {
-  cxxpool::thread_pool pool{4};
-  pool.wait();
-}
-
-TEST(test_thread_pool_wait_for) {
-  cxxpool::thread_pool pool{4};
-  int a = 0;
-  pool.push([&a]{
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    a = 1;
-  });
-  ASSERT_FALSE(pool.wait_for(std::chrono::milliseconds(10)));
-  ASSERT_EQUAL(0, a);
-  ASSERT_TRUE(pool.wait_for(std::chrono::milliseconds(15)));
-  ASSERT_EQUAL(1, a);
-}
-
-TEST(test_thread_pool_wait_until) {
-  cxxpool::thread_pool pool{4};
-  int a = 0;
-  pool.push([&a]{
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    a = 1;
-  });
-  const auto now = std::chrono::steady_clock::now();
-  ASSERT_FALSE(pool.wait_until(now + std::chrono::milliseconds(10)));
-  ASSERT_EQUAL(0, a);
-  ASSERT_TRUE(pool.wait_until(now + std::chrono::milliseconds(25)));
-  ASSERT_EQUAL(1, a);
-}
-
 TEST(test_infinite_counter_increment_operator) {
   cxxpool::detail::infinite_counter<int> c1;
   auto c2 = ++c1;
@@ -387,24 +328,14 @@ TEST(test_thread_pool_n_tasks) {
   ASSERT_EQUAL(2u, pool.n_tasks());
 }
 
-TEST(test_push_first_then_add_threads) {
-  cxxpool::thread_pool pool;
-  auto future1 = pool.push([]{ return 1; });
-  auto future2 = pool.push([](double value) { return value; }, 2.);
-  ASSERT_FALSE(pool.wait_for(std::chrono::milliseconds(100)));
-  pool.add_threads(4);
-  ASSERT_EQUAL(1, future1.get());
-  ASSERT_EQUAL(2., future2.get());
-}
-
 TEST(test_pause_and_resume) {
   cxxpool::thread_pool pool;
   auto future1 = pool.push([]{ return 1; });
   auto future2 = pool.push([]{ return 2.; });
-  pool.pause();
+  pool.set_pause(true);
   pool.add_threads(4);
-  ASSERT_FALSE(pool.wait_for(std::chrono::milliseconds(100)));
-  pool.resume();
+//  ASSERT_FALSE(pool.wait_for(std::chrono::milliseconds(100)));
+  pool.set_pause(false);
   ASSERT_EQUAL(1, future1.get());
   ASSERT_EQUAL(2., future2.get());
 }
