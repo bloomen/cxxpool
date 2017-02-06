@@ -17,6 +17,14 @@
 #include <cstddef>
 
 
+// TODO
+// - write doc and examples
+// - test for thread prioritizer
+// - test for set_pause
+// - test for move semantics
+// - consider templating on the thread class
+
+
 namespace cxxpool {
 namespace detail {
 
@@ -89,7 +97,7 @@ std::vector<std::future_status> wait_until(Iterator first, Iterator last,
 
 // Calls get() on all futures
 template<typename Iterator,
-         typename = typename std::enable_if<detail::future_info<Iterator>::is_void>::type>
+         typename = typename std::enable_if<cxxpool::detail::future_info<Iterator>::is_void>::type>
 inline
 void get(Iterator first, Iterator last) {
     for (; first != last; ++first)
@@ -99,7 +107,7 @@ void get(Iterator first, Iterator last) {
 
 // Calls get() on all futures and stores the results in the returned container
 template<typename Result, typename Iterator,
-         typename = typename std::enable_if<!detail::future_info<Iterator>::is_void>::type>
+         typename = typename std::enable_if<!cxxpool::detail::future_info<Iterator>::is_void>::type>
 inline
 Result get(Iterator first, Iterator last, Result result) {
     for (; first != last; ++first)
@@ -114,7 +122,7 @@ template<typename Iterator,
 inline
 std::vector<typename detail::future_info<Iterator>::value_type>
 get(Iterator first, Iterator last) {
-    return cxxpool::get(first, last, std::vector<typename detail::future_info<Iterator>::value_type>{});
+    return cxxpool::get(first, last, std::vector<typename cxxpool::detail::future_info<Iterator>::value_type>{});
 }
 
 
@@ -248,6 +256,7 @@ public:
     // Sets the function to prioritize currently active plus all new threads.
     // By default, threads will be launched with the default OS priority
     void set_thread_prioritizer(std::function<void(std::thread&)> prioritizer) {
+        std::lock_guard<std::mutex> thread_lock(thread_mutex_);
         thread_prioritizer_ = std::move(prioritizer);
         for (auto& thread : threads_) {
             thread_prioritizer_(thread);
@@ -300,7 +309,7 @@ public:
         {
             std::lock_guard<std::mutex> task_lock(task_mutex_);
             if (done_)
-                throw thread_pool_error{"push called while pool is shutting down"};
+                throw cxxpool::thread_pool_error{"push called while pool is shutting down"};
             tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, ++task_counter_);
         }
         task_cond_var_.notify_one();
@@ -309,13 +318,13 @@ public:
 
     // Returns the current number of queued tasks
     std::size_t n_tasks() const {
-        std::lock_guard<std::mutex> lock(task_mutex_);
+        std::lock_guard<std::mutex> task_lock(task_mutex_);
         return tasks_.size();
     }
 
     // Clears all queued tasks. Not affecting currently running tasks
     void clear() {
-        std::lock_guard<std::mutex> lock(task_mutex_);
+        std::lock_guard<std::mutex> task_lock(task_mutex_);
         decltype(tasks_) empty;
         tasks_.swap(empty);
     }
@@ -324,7 +333,7 @@ public:
     // running tasks. Disabling it will resume the processing of tasks
     void set_pause(bool enabled) {
         {
-            std::lock_guard<std::mutex> lock(task_mutex_);
+            std::lock_guard<std::mutex> task_lock(task_mutex_);
             paused_ = enabled;
         }
         if (!paused_)
@@ -335,7 +344,7 @@ private:
 
     void worker() {
         for (;;) {
-            detail::priority_task task;
+            cxxpool::detail::priority_task task;
             {
                 std::unique_lock<std::mutex> task_lock(task_mutex_);
                 task_cond_var_.wait(task_lock, [this]{

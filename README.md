@@ -1,18 +1,15 @@
-cxxpool is a portable, header-only thread pool for C++
+# cxxpool
 
+cxxpool is a header-only thread pool for C++. It enables you to schedule independent
+tasks with or without specifying task priorities. Pushing a task into the thread
+pool returns a future associated to the underlying execution. 
 
-Install
--------
+cxxpool is designed for ease of use, portability, and scalability. It is written in 
+C++11 and only depends on the standard library. Just copy `src/cxxpool.h` 
+to your project and off you go!
 
-./configure
-make install
+**Example**
 
-OR
+to do...
 
-Copy src/cxxpool.h to your project.
-
-
-cxxpool is written using C++11 and only depends on the standard library.
-
-cxxpool is being developed by Christian Blume. Contact Christian at
-chr.blume@gmail.com for any questions or comments.
+**Enjoy!**

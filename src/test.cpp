@@ -155,16 +155,8 @@ TEST(test_infinite_counter_with_one_wrapping) {
 TEST(test_priority_task_noarg_construction) {
   cxxpool::detail::priority_task t1;
   cxxpool::detail::priority_task t2;
-  ASSERT_FALSE(t1.callback());
   ASSERT_FALSE(t1 < t2);
   ASSERT_FALSE(t2 < t1);
-}
-
-template<typename T, typename... U>
-size_t get_address(std::function<T(U...)> f) {
-  typedef T(fn_type)(U...);
-  fn_type** fn_pointer = f.template target<fn_type*>();
-  return reinterpret_cast<size_t>(*fn_pointer);
 }
 
 void some_function() {}
@@ -176,7 +168,6 @@ TEST(test_priority_task_with_different_priorities) {
   cxxpool::detail::priority_task t1(some_function, 3, c);
   ++c;
   cxxpool::detail::priority_task t2(some_function, 2, c);
-  ASSERT_EQUAL(get_address(t1.callback()), get_address(t2.callback()));
   ASSERT_TRUE(t2 < t1);
   ASSERT_FALSE(t1 < t2);
 }
@@ -186,7 +177,6 @@ TEST(test_priority_task_with_same_priorities) {
   cxxpool::detail::priority_task t1(some_function, 2, c);
   ++c;
   cxxpool::detail::priority_task t2(some_other_function, 2, c);
-  ASSERT_NOT_EQUAL(get_address(t1.callback()), get_address(t2.callback()));
   ASSERT_TRUE(t2 < t1);
   ASSERT_FALSE(t1 < t2);
 }
