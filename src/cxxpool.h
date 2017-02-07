@@ -19,7 +19,7 @@
 
 // TODO
 // - write doc and examples
-// - test for thread prioritizer
+// - test for thread prioritizer/namer
 // - test for set_pause
 // - test for move semantics
 // - consider templating on the thread class
@@ -220,7 +220,9 @@ public:
     // Constructor. No threads are launched
     thread_pool()
     : done_{false}, paused_{false}, threads_{}, tasks_{}, task_counter_{},
-      task_cond_var_{}, task_mutex_{}, thread_mutex_{}, thread_prioritizer_{[](std::thread&) {}}
+      task_cond_var_{}, task_mutex_{}, thread_mutex_{},
+      thread_prioritizer_{[](std::thread&) {}},
+      thread_namer_{[](std::thread&, std::size_t) {}}
     {}
 
     // Constructor. Launches the desired number of threads. Passing 0 is
@@ -253,8 +255,17 @@ public:
     thread_pool(thread_pool&&) = default;
     thread_pool& operator=(thread_pool&&) = default;
 
+    // Sets the function to name currently active plus all new threads.
+    void set_thread_namer(std::function<void(std::thread&, std::size_t)> namer) {
+        std::lock_guard<std::mutex> thread_lock(thread_mutex_);
+        thread_namer_ = std::move(namer);
+        std::size_t count = 0;
+        for (auto& thread : threads_) {
+            thread_namer_(thread, count++);
+        }
+    }
+
     // Sets the function to prioritize currently active plus all new threads.
-    // By default, threads will be launched with the default OS priority
     void set_thread_prioritizer(std::function<void(std::thread&)> prioritizer) {
         std::lock_guard<std::mutex> thread_lock(thread_mutex_);
         thread_prioritizer_ = std::move(prioritizer);
@@ -273,9 +284,11 @@ public:
             }
             std::lock_guard<std::mutex> thread_lock(thread_mutex_);
             const auto n_target = threads_.size() + n_threads;
+            std::size_t count = threads_.size();
             while (threads_.size() < n_target) {
                 threads_.emplace_back(&thread_pool::worker, this);
                 thread_prioritizer_(threads_.back());
+                thread_namer_(threads_.back(), count++);
             }
         }
     }
@@ -369,6 +382,7 @@ private:
     mutable std::mutex task_mutex_;
     mutable std::mutex thread_mutex_;
     std::function<void(std::thread&)> thread_prioritizer_;
+    std::function<void(std::thread&, std::size_t)> thread_namer_;
 };
 
 
