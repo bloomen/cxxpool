@@ -1,5 +1,6 @@
 #include <libunittest/all.hpp>
 #include "../src/cxxpool.h"
+#include "../examples/basic_with_three_tasks.h"
 #include <list>
 
 
@@ -338,5 +339,14 @@ TEST(test_clear) {
   ASSERT_EQUAL(0u, pool.n_tasks());
 }
 
+COLLECTION(test_examples) {
 
+TEST(basic_with_three_tasks) {
+    std::ostringstream os;
+    examples::basic_with_three_tasks(os);
+    const std::string expected = "results = 42, 13, 13\n";
+    ASSERT_EQUAL(expected, os.str());
 }
+
+} // test_examples
+} // test_transwarp

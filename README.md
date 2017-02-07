@@ -10,6 +10,28 @@ to your project and off you go!
 
 **Example**
 
-to do...
+This examples creates a thread pool with 4 threads and pushes
+three simple tasks into the pool. The push() function returns
+a future associated to the underlying execution.
+
+```cpp
+#include <iostream>
+#include "cxxpool.h"
+
+int sum(int x, int y) {
+    return x + y;
+}
+
+int main() {
+    cxxpool::thread_pool pool(4);
+
+    auto future1 = pool.push([]{ return 42; });
+    auto future2 = pool.push([](double x){ return x; }, 13.);
+    auto future3 = pool.push(sum, 6, 7);
+
+    std::cout << "results = " << future1.get() << ", ";
+    std::cout << future2.get() << ", " << future3.get() << std::endl;
+}
+```
 
 **Enjoy!**
