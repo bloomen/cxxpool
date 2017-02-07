@@ -25,10 +25,12 @@ int sum(int x, int y) {
 int main() {
     cxxpool::thread_pool pool(4);
 
+    // pushing tasks and retrieving futures
     auto future1 = pool.push([]{ return 42; });
     auto future2 = pool.push([](double x){ return x; }, 13.);
     auto future3 = pool.push(sum, 6, 7);
 
+    // output: results = 42, 13, 13
     std::cout << "results = " << future1.get() << ", ";
     std::cout << future2.get() << ", " << future3.get() << std::endl;
 }
