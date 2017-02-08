@@ -19,9 +19,6 @@
 
 // TODO
 // - write doc and examples
-// - test for thread prioritizer/namer
-// - test for set_pause
-// - test for move semantics
 // - consider templating on the thread class
 
 
@@ -202,7 +199,7 @@ public:
 };
 
 
-// A header-only thread pool for C++
+// A thread pool for C++
 //
 // Constructing the thread pool launches the worker threads while
 // destructing it joins them. The threads will be alive for as long as the
@@ -247,15 +244,14 @@ public:
             thread.join();
     }
 
-    // deleting copy semantics
+    // deleting copy/move semantics
     thread_pool(const thread_pool&) = delete;
     thread_pool& operator=(const thread_pool&) = delete;
-
-    // defaulting move semantics
-    thread_pool(thread_pool&&) = default;
-    thread_pool& operator=(thread_pool&&) = default;
+    thread_pool(thread_pool&&) = delete;
+    thread_pool& operator=(thread_pool&&) = delete;
 
     // Sets the function to name currently active plus all new threads.
+    // The second argument of the namer is the thread index
     void set_thread_namer(std::function<void(std::thread&, std::size_t)> namer) {
         std::lock_guard<std::mutex> thread_lock(thread_mutex_);
         thread_namer_ = std::move(namer);
@@ -284,11 +280,10 @@ public:
             }
             std::lock_guard<std::mutex> thread_lock(thread_mutex_);
             const auto n_target = threads_.size() + n_threads;
-            std::size_t count = threads_.size();
             while (threads_.size() < n_target) {
                 threads_.emplace_back(&thread_pool::worker, this);
                 thread_prioritizer_(threads_.back());
-                thread_namer_(threads_.back(), count++);
+                thread_namer_(threads_.back(), threads_.size() - 1);
             }
         }
     }
@@ -335,7 +330,7 @@ public:
         return tasks_.size();
     }
 
-    // Clears all queued tasks. Not affecting currently running tasks
+    // Clears all queued tasks, not affecting currently running tasks
     void clear() {
         std::lock_guard<std::mutex> task_lock(task_mutex_);
         decltype(tasks_) empty;
