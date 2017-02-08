@@ -17,11 +17,6 @@
 #include <cstddef>
 
 
-// TODO
-// - write doc and examples
-// - consider templating on the thread class
-
-
 namespace cxxpool {
 namespace detail {
 
