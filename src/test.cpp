@@ -338,26 +338,6 @@ TEST(test_clear) {
   ASSERT_EQUAL(0u, pool.n_tasks());
 }
 
-TEST(test_thread_prioritizer) {
-    int count = 0;
-    auto functor = [&count](std::thread&) { ++count; };
-    cxxpool::thread_pool pool(2);
-    pool.set_thread_prioritizer(functor);
-    ASSERT_EQUAL(2, count);
-    pool.add_threads(3);
-    ASSERT_EQUAL(5, count);
-}
-
-TEST(test_thread_namer) {
-    std::size_t count = 0;
-    auto functor = [&count](std::thread&, std::size_t i) { count += i; };
-    cxxpool::thread_pool pool(2);
-    pool.set_thread_namer(functor);
-    ASSERT_EQUAL(1u, count);
-    pool.add_threads(3);
-    ASSERT_EQUAL(10u, count);
-}
-
 COLLECTION(test_examples) {
 
 TEST(basic_with_three_tasks) {

@@ -11,7 +11,6 @@
 #include <queue>
 #include <utility>
 #include <functional>
-#include <memory>
 #include <vector>
 #include <chrono>
 #include <cstddef>
@@ -212,9 +211,7 @@ public:
     // Constructor. No threads are launched
     thread_pool()
     : done_{false}, paused_{false}, threads_{}, tasks_{}, task_counter_{},
-      task_cond_var_{}, task_mutex_{}, thread_mutex_{},
-      thread_prioritizer_{[](std::thread&) {}},
-      thread_namer_{[](std::thread&, std::size_t) {}}
+      task_cond_var_{}, task_mutex_{}, thread_mutex_{}
     {}
 
     // Constructor. Launches the desired number of threads. Passing 0 is
@@ -245,26 +242,6 @@ public:
     thread_pool(thread_pool&&) = delete;
     thread_pool& operator=(thread_pool&&) = delete;
 
-    // Sets the function to name currently active plus all new threads.
-    // The second argument of the namer is the thread index
-    void set_thread_namer(std::function<void(std::thread&, std::size_t)> namer) {
-        std::lock_guard<std::mutex> thread_lock(thread_mutex_);
-        thread_namer_ = std::move(namer);
-        std::size_t count = 0;
-        for (auto& thread : threads_) {
-            thread_namer_(thread, count++);
-        }
-    }
-
-    // Sets the function to prioritize currently active plus all new threads.
-    void set_thread_prioritizer(std::function<void(std::thread&)> prioritizer) {
-        std::lock_guard<std::mutex> thread_lock(thread_mutex_);
-        thread_prioritizer_ = std::move(prioritizer);
-        for (auto& thread : threads_) {
-            thread_prioritizer_(thread);
-        }
-    }
-
     // Adds new threads to the pool and launches them
     void add_threads(std::size_t n_threads) {
         if (n_threads > 0) {
@@ -277,8 +254,6 @@ public:
             const auto n_target = threads_.size() + n_threads;
             while (threads_.size() < n_target) {
                 threads_.emplace_back(&thread_pool::worker, this);
-                thread_prioritizer_(threads_.back());
-                thread_namer_(threads_.back(), threads_.size() - 1);
             }
         }
     }
@@ -371,8 +346,6 @@ private:
     std::condition_variable task_cond_var_;
     mutable std::mutex task_mutex_;
     mutable std::mutex thread_mutex_;
-    std::function<void(std::thread&)> thread_prioritizer_;
-    std::function<void(std::thread&, std::size_t)> thread_namer_;
 };
 
 
