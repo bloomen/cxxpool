@@ -8,7 +8,7 @@ cxxpool is designed for ease of use, portability, and scalability. It is written
 C++11 and only depends on the standard library. Just copy `src/cxxpool.h` 
 to your project and off you go!
 
-**Example**
+## Example
 
 This examples creates a thread pool with 4 threads and pushes
 three simple tasks into the pool. The push() function returns
@@ -23,7 +23,7 @@ int sum(int x, int y) {
 }
 
 int main() {
-    cxxpool::thread_pool pool(4);
+    cxxpool::thread_pool pool{4};
 
     // pushing tasks and retrieving futures
     auto future1 = pool.push([]{ return 42; });
@@ -35,5 +35,7 @@ int main() {
     std::cout << future2.get() << ", " << future3.get() << std::endl;
 }
 ```
+## Feedback
 
-**Enjoy!**
+Contact me if you have any questions or suggestions to make this a better library!
+You can reach me at `chr.blume@gmail.com`
