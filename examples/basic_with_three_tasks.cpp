@@ -12,7 +12,7 @@ int sum(int x, int y) {
 // three simple tasks into the pool. The push() function returns
 // a future associated to the underlying execution.
 void basic_with_three_tasks(std::ostream& os) {
-    cxxpool::thread_pool pool(4);
+    cxxpool::thread_pool pool{4};
 
     // pushing tasks and retrieving futures
     auto future1 = pool.push([]{ return 42; });

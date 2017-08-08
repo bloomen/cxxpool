@@ -1,7 +1,7 @@
 // cxxpool is a header-only thread pool for C++
-// Version: 2.0.0 (in development)
-// Author: Christian Blume (chr.blume@gmail.com)
+// Version: in dev
 // Repository: https://github.com/bloomen/cxxpool
+// Copyright: 2015 Christian Blume
 // License: http://www.opensource.org/licenses/mit-license.php
 #pragma once
 #include <thread>
@@ -219,21 +219,32 @@ public:
     explicit thread_pool(std::size_t n_threads)
     : thread_pool{}
     {
-        add_threads(n_threads);
+        if (n_threads > 0) {
+            std::lock_guard<std::mutex> thread_lock(thread_mutex_);
+            const auto n_target = threads_.size() + n_threads;
+            while (threads_.size() < n_target) {
+                std::thread thread;
+                try {
+                    thread = std::thread{&thread_pool::worker, this};
+                } catch (...) {
+                    shutdown();
+                    throw;
+                }
+                try {
+                    threads_.push_back(std::move(thread));
+                } catch (...) {
+                    shutdown();
+                    thread.join();
+                    throw;
+                }
+            }
+        }
     }
 
     // Destructor. Joins all threads launched. Waits for all running tasks
     // to complete
     ~thread_pool() {
-        {
-            std::lock_guard<std::mutex> task_lock(task_mutex_);
-            done_ = true;
-            paused_ = false;
-        }
-        task_cond_var_.notify_all();
-        std::lock_guard<std::mutex> thread_lock(thread_mutex_);
-        for (auto& thread : threads_)
-            thread.join();
+        shutdown();
     }
 
     // deleting copy/move semantics
@@ -253,7 +264,14 @@ public:
             std::lock_guard<std::mutex> thread_lock(thread_mutex_);
             const auto n_target = threads_.size() + n_threads;
             while (threads_.size() < n_target) {
-                threads_.emplace_back(&thread_pool::worker, this);
+                std::thread thread(&thread_pool::worker, this);
+                try {
+                    threads_.push_back(std::move(thread));
+                } catch (...) {
+                    shutdown();
+                    thread.join();
+                    throw;
+                }
             }
         }
     }
@@ -335,6 +353,18 @@ private:
             }
             task();
         }
+    }
+
+    void shutdown() {
+        {
+            std::lock_guard<std::mutex> task_lock(task_mutex_);
+            done_ = true;
+            paused_ = false;
+        }
+        task_cond_var_.notify_all();
+        std::lock_guard<std::mutex> thread_lock(thread_mutex_);
+        for (auto& thread : threads_)
+            thread.join();
     }
 
     bool done_;
