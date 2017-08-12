@@ -11,7 +11,7 @@ to your project and off you go!
 ## Example
 
 This examples creates a thread pool with 4 threads and pushes
-three simple tasks into the pool. The push() function returns
+three simple tasks into the pool. The `push()` function returns
 a future associated to the underlying execution.
 
 ```cpp
