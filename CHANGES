@@ -1,3 +1,10 @@
+2.0.0
+
+* remove wait methods from thread_pool class as these can be called on the future
+* consolidate pause/resume into a single method call
+* improved error handling
+* better documentation
+
 1.3.0
 
 * Add method for clearing all currently queued tasks
