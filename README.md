@@ -6,13 +6,12 @@ pool returns a future associated to the underlying execution.
 
 cxxpool is designed for ease of use, portability, and scalability. It is written in 
 C++11 and only depends on the standard library. Just copy `src/cxxpool.h` 
-to your project and off you go!
+to your project and off you go! Tested with GCC, Clang, and Visual Studio.
 
 ## Example
 
-This examples creates a thread pool with 4 threads and pushes
-three simple tasks into the pool. The `push()` function returns
-a future associated to the underlying execution.
+This example creates a thread pool with 4 threads and pushes
+three simple tasks into the pool.
 
 ```cpp
 #include <iostream>
@@ -35,6 +34,7 @@ int main() {
     std::cout << future2.get() << ", " << future3.get() << std::endl;
 }
 ```
+
 ## Feedback
 
 Contact me if you have any questions or suggestions to make this a better library!
