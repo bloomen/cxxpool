@@ -245,35 +245,39 @@ TEST(test_wait) {
 }
 
 TEST(test_wait_for) {
+  condvar cv;
   cxxpool::thread_pool pool{4};
   int a = 0;
   std::vector<std::future<void>> futures;
-  futures.emplace_back(pool.push([&a]{
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  futures.emplace_back(pool.push([&a,&cv]{
+    cv.wait();
     a = 1;
   }));
   cxxpool::wait_for(futures.begin(), futures.end(),
                     std::chrono::milliseconds(10));
   ASSERT_EQUAL(0, a);
+  cv.notify_one();
   cxxpool::wait_for(futures.begin(), futures.end(),
-                    std::chrono::milliseconds(15));
+                    std::chrono::milliseconds(50));
   ASSERT_EQUAL(1, a);
 }
 
 TEST(test_wait_until) {
+  condvar cv;
   cxxpool::thread_pool pool{4};
   int a = 0;
   std::vector<std::future<void>> futures;
-  futures.emplace_back(pool.push([&a]{
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  futures.emplace_back(pool.push([&a,&cv]{
+    cv.wait();
     a = 1;
   }));
   const auto now = std::chrono::steady_clock::now();
   cxxpool::wait_until(futures.begin(), futures.end(),
                       now + std::chrono::milliseconds(10));
   ASSERT_EQUAL(0, a);
+  cv.notify_one();
   cxxpool::wait_until(futures.begin(), futures.end(),
-                      now + std::chrono::milliseconds(25));
+                      now + std::chrono::milliseconds(50));
   ASSERT_EQUAL(1, a);
 }
 
