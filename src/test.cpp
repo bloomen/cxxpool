@@ -29,11 +29,6 @@ class condvar {
     cond_var_.wait(lock, [this]() { return flag_; });
   }
 
-  void reset() {
-    std::lock_guard<std::mutex> lock{mutex_};
-    flag_ = false;
-  }
-
  private:
 
   void make_flag_true() {

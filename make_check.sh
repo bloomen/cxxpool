@@ -10,27 +10,40 @@ export CXX=$compiler
 
 modes='debug release'
 
+echo "+++ Running CppCheck ..."
+$thisdir/cppcheck.sh
+echo "CppCheck OK"
+
 for mode in $modes;do
     echo "+++ Checking $mode with $compiler ..."
 
     # Checking tests
     $thisdir/src/compile_test.sh $mode
-    echo "+++ Running $thisdir/src/test.$mode ..."
+    app=$thisdir/src/test.$mode
+    echo "+++ Running $app ..."
     count=0
     while [ $count -lt 100 ]; do
-        $thisdir/src/test.$mode > /dev/null
+        $app > /dev/null
         let count+=1
     done
-    echo "Tests OK"        
+    echo "+++ Valgrinding $app ..."
+    $thisdir/valgrind.sh $app
+    echo "Tests OK"
 
     # Checking examples
     examples=$(ls $thisdir/examples/*.cpp)
     for ex in $examples; do
         $thisdir/examples/compile_example.sh $ex $mode
-        echo "+++ Running ${ex%.cpp}.$mode ..."
-        ${ex%.cpp}.$mode
+        app=${ex%.cpp}.$mode
+        echo "+++ Running $app ..."
+        $app
+        if [[ $app != *"benchmark_"* ]]; then
+            echo "+++ Valgrinding $app ..."
+            $thisdir/valgrind.sh $app
+        fi
     done
-    echo "Examples OK"        
+    echo "Examples OK"
+       
 done
 
 echo "+++ Done!"

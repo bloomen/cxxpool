@@ -157,8 +157,8 @@ public:
     : callback_{}, priority_{}, order_{}
     {}
 
-    priority_task(std::function<void()> callback, std::size_t priority,
-                  cxxpool::detail::infinite_counter<counter_elem_t> order)
+    // cppcheck-suppress passedByValue
+    priority_task(std::function<void()> callback, std::size_t priority, cxxpool::detail::infinite_counter<counter_elem_t> order)
     : callback_{std::move(callback)}, priority_(priority), order_{std::move(order)}
     {}
 
