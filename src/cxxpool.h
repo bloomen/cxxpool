@@ -1,5 +1,5 @@
 // cxxpool is a header-only thread pool for C++
-// Version: in dev
+// Version: 2.0.0
 // Repository: https://github.com/bloomen/cxxpool
 // Copyright: 2015 Christian Blume
 // License: http://www.opensource.org/licenses/mit-license.php
