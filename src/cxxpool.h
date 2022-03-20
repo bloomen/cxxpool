@@ -22,7 +22,7 @@ namespace detail {
 template<typename Iterator>
 struct future_info {
     typedef typename std::iterator_traits<Iterator>::value_type future_type;
-    typedef typename std::result_of<decltype(&future_type::get)(future_type)>::type value_type;
+    typedef decltype(std::declval<future_type>().get()) value_type;
     static constexpr bool is_void = std::is_void<value_type>::value;
 };
 
