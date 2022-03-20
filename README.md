@@ -1,7 +1,5 @@
 # cxxpool
 
-Version: 2.0.0
-
 cxxpool is a header-only thread pool for C++. It enables you to schedule independent
 tasks with or without specifying task priorities. Pushing a task into the thread
 pool returns a future associated to the underlying execution. 
@@ -39,5 +37,4 @@ int main() {
 
 ## Feedback
 
-Contact me if you have any questions or suggestions to make this a better library!
-You can reach me at `chr.blume@gmail.com`
+Get in touch for any questions or suggestions to make this a better library!
